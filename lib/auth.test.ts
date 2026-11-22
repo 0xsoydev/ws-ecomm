@@ -6,9 +6,14 @@ describe("authMethodFor", () => {
     expect(authMethodFor("/passkey/verify-authentication")).toBe("passkey")
   })
 
-  test("email and password sign-in, and the session re-issued by a password change, are password sessions", () => {
-    expect(authMethodFor("/sign-in/email")).toBe("password")
-    expect(authMethodFor("/change-password")).toBe("password")
+  test("without email, password sign-in is a password session; changing a password never creates one", () => {
+    expect(authMethodFor("/sign-in/email", false)).toBe("password")
+    expect(authMethodFor("/change-password", false)).toBe("unknown")
+  })
+
+  test("with email codes on, only the verified code yields a password session, never the bare password step", () => {
+    expect(authMethodFor("/sign-in/email", true)).toBe("unknown")
+    expect(authMethodFor("/two-factor/verify-otp", true)).toBe("password")
   })
 
   test("any other session-creating path is unknown and denied, email codes included", () => {

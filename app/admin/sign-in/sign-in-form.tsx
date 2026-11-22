@@ -15,7 +15,9 @@ export function SignInForm() {
   const params = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [busy, setBusy] = useState<"passkey" | "password" | null>(null)
+  const [code, setCode] = useState("")
+  const [step, setStep] = useState<"credentials" | "code">("credentials")
+  const [busy, setBusy] = useState<"passkey" | "password" | "code" | null>(null)
   const [error, setError] = useState(params.get("error") === "no-access" ? "This account has no admin access. Ask the owner to add you." : "")
 
   async function signInWithPasskey() {
@@ -33,13 +35,74 @@ export function SignInForm() {
   async function signInWithPassword() {
     setBusy("password")
     setError("")
-    const { error: failed } = await authClient.signIn.email({ email: email.trim(), password })
-    setBusy(null)
+    const { data, error: failed } = await authClient.signIn.email({ email: email.trim(), password })
     if (failed) {
+      setBusy(null)
       setError(failed.status === 429 ? "Too many attempts. Wait a minute and try again." : "That email and password do not match an admin account.")
       return
     }
+    if ("twoFactorRedirect" in data && data.twoFactorRedirect) {
+      await sendCode()
+      setStep("code")
+      setBusy(null)
+      return
+    }
+    setBusy(null)
     router.push("/admin")
+  }
+
+  async function sendCode() {
+    setError("")
+    const { error: failed } = await authClient.twoFactor.sendOtp()
+    if (failed) setError(failed.status === 429 ? "Too many codes requested. Wait a minute." : "The code could not be sent. Try again in a minute.")
+  }
+
+  async function verifyCode() {
+    setBusy("code")
+    setError("")
+    const { error: failed } = await authClient.twoFactor.verifyOtp({ code: code.trim() })
+    setBusy(null)
+    if (failed) {
+      setError(failed.status === 429 ? "Too many attempts. Wait a minute and try again." : "That code did not work. Check the latest email, or send a new code.")
+      return
+    }
+    router.push("/admin")
+  }
+
+  if (step === "code") {
+    return (
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void verifyCode()
+        }}
+      >
+        <p className="text-muted">We emailed a 6-digit code to {email.trim()}. It works for 5 minutes.</p>
+        <label className="flex flex-col gap-2">
+          <span className="font-semibold">Code</span>
+          <input
+            className={`${field} tracking-[0.3em]`}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="\d{6}"
+            maxLength={6}
+            required
+            value={code}
+            onChange={(e) => { setCode(e.target.value.replace(/\D/g, "")) }}
+          />
+        </label>
+        <button type="submit" className={primary} disabled={busy !== null}>
+          {busy === "code" ? "Checking" : "Sign in"}
+        </button>
+        <button type="button" className="text-sm underline" onClick={() => void sendCode()}>
+          Send a new code
+        </button>
+        <p role="alert" aria-live="polite" className="min-h-6 text-sm text-danger">
+          {error}
+        </p>
+      </form>
+    )
   }
 
   return (

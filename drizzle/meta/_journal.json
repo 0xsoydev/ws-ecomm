@@ -43,6 +43,13 @@
       "when": 1795360109744,
       "tag": "0005_password_sign_in",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795361425249,
+      "tag": "0006_email_codes",
+      "breakpoints": true
     }
   ]
 }
