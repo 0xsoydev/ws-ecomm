@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
+import Toasts from "@/components/Toasts"
 import { AdminNav, AdminNavView } from "./admin-nav"
 
 export const metadata: Metadata = { title: { default: "Admin", template: "%s | WS Green admin" }, robots: { index: false, follow: false } }
@@ -10,6 +11,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
       <Suspense fallback={<AdminNavView pathname={null} />}>
         <AdminNav />
       </Suspense>
+      <Toasts bottom="calc(72px + env(safe-area-inset-bottom))" />
       <main className="min-w-0 flex-1 px-4 pt-5 pb-[calc(5rem+env(safe-area-inset-bottom))] md:px-8 md:pt-8 md:pb-12">{children}</main>
     </div>
   )

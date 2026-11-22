@@ -12,7 +12,12 @@ import { SignOutButton } from "./sign-out-button"
 export default function AdminHome() {
   return (
     <div className="mx-auto flex max-w-[720px] flex-col gap-8">
-      <h1 className="text-2xl">Home</h1>
+      <div className="flex items-baseline justify-between gap-4">
+        <h1 className="text-2xl">Home</h1>
+        <Link href="/admin/settings" className="text-sm font-medium md:hidden">
+          Shop settings
+        </Link>
+      </div>
       <Suspense fallback={<ReadinessSkeleton />}>
         <Readiness />
       </Suspense>

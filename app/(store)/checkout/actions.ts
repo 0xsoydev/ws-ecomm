@@ -6,12 +6,13 @@ import { cookies, headers } from "next/headers"
 import { updateTag } from "next/cache"
 import { z } from "zod"
 import { db } from "@/lib/db"
+import { courierFee } from "@/lib/delivery"
 import { env } from "@/lib/env"
 import { collectsTax, regimeAt } from "@/lib/gst"
 import { isMaharashtraPincode, orderNumber } from "@/lib/orders"
 import { unitPrice } from "@/lib/pricing"
 import { withinLimit } from "@/lib/ratelimit"
-import { customers, orderEvents, orderItems, orders, products, stockMovements, units } from "@/lib/schema"
+import { customers, orderCharges, orderEvents, orderItems, orders, products, stockMovements, units } from "@/lib/schema"
 import { getSettings } from "@/lib/settings"
 import { todayInIndia } from "@/lib/time"
 
@@ -124,6 +125,7 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
       if (changed.length) throw new Refusal({ ok: false, kind: "price", changed })
 
       const itemsPaise = priced.reduce((sum, l) => sum + l.price.paise * l.qty, 0)
+      const fee = v.delivery === "ship" ? courierFee(settings, itemsPaise) : 0
       if (itemsPaise < settings.minOrderPaise) throw new Refusal({ ok: false, kind: "message", message: `The minimum order is ₹${String(settings.minOrderPaise / 100)}.` })
 
       for (const l of priced) {
@@ -147,7 +149,7 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
         .values({
           customerId: customer.id,
           channel: "web_whatsapp",
-          stage: v.delivery === "ship" && settings.shippingBands.length === 0 ? "quote_pending" : "requested",
+          stage: fee === null ? "quote_pending" : "requested",
           payment: "unpaid",
           method: v.payment,
           delivery: v.delivery,
@@ -160,8 +162,8 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
           placeOfSupply: "27",
           scheme: regime.scheme,
           itemsPaise,
-          chargesPaise: 0,
-          totalPaise: itemsPaise,
+          chargesPaise: fee ?? 0,
+          totalPaise: itemsPaise + (fee ?? 0),
           taxPaise: 0,
           idempotencyKey: v.idempotencyKey,
           requestHash,
@@ -193,6 +195,7 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
           fulfilment: l.row.product.fulfilment,
         })),
       )
+      if (fee) await tx.insert(orderCharges).values({ orderId: order.id, kind: "shipping", amountPaise: fee, gstRateBps: 0, taxablePaise: fee, taxPaise: 0 })
       const reserved = priced.filter((l) => l.row.product.stock !== null)
       if (reserved.length) await tx.insert(stockMovements).values(reserved.map((l) => ({ productId: l.row.product.id, delta: -l.qty, reason: "sold_online" as const, orderId: order.id })))
       await tx.insert(orderEvents).values({ orderId: order.id, type: "placed", data: { delivery: v.delivery, method: v.payment, items: itemsPaise } })

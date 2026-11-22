@@ -9,8 +9,10 @@ import { useEffect, useState } from "react"
 import { useCart } from "@/lib/cart"
 import { unitPrice } from "@/lib/pricing"
 import { loadSnapshot, useSnapshot } from "@/lib/snapshot"
-import type { BrowseSystem } from "./BrowsePanel"
-import BrowseSheet from "./BrowseSheet"
+import dynamic from "next/dynamic"
+import type { BrowseSystem } from "./BrowseSheet"
+
+const BrowseSheet = dynamic(() => import("./BrowseSheet"), { ssr: false })
 
 const OWN_BOTTOM = ["/p/", "/cart", "/checkout"]
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -102,6 +104,7 @@ function CartBar() {
 
 export function BottomBarView({ pathname, systems }: { pathname: string | null; systems: BrowseSystem[] }) {
   const [browsing, setBrowsing] = useState(false)
+  const [opened, setOpened] = useState(false)
   const count = useCart().length
   if (pathname && OWN_BOTTOM.some((p) => pathname.startsWith(p))) return null
   const tab = "flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs no-underline transition-colors duration-150 ease-out"
@@ -118,7 +121,10 @@ export function BottomBarView({ pathname, systems }: { pathname: string | null; 
             </Link>
           </li>
           <li className="flex flex-1">
-            <button type="button" onClick={() => { setBrowsing(true); }} className={`${tab} ${state(pathname?.startsWith("/c/") === true || browsing)}`} aria-haspopup="dialog">
+            <button type="button" onClick={() => {
+                setOpened(true)
+                setBrowsing(true)
+              }} className={`${tab} ${state(pathname?.startsWith("/c/") === true || browsing)}`} aria-haspopup="dialog">
               <LayoutGrid aria-hidden className="size-5.5" strokeWidth={1.5} />
               Categories
             </button>
@@ -144,7 +150,7 @@ export function BottomBarView({ pathname, systems }: { pathname: string | null; 
           </li>
         </ul>
       </nav>
-      <BrowseSheet systems={systems} open={browsing} onOpenChange={setBrowsing} />
+      {opened ? <BrowseSheet systems={systems} open={browsing} onOpenChange={setBrowsing} /> : null}
     </>
   )
 }

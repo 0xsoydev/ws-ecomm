@@ -4,6 +4,7 @@ import { Suspense } from "react"
 import Listing from "@/components/Listing"
 import PageHead from "@/components/PageHead"
 import { ListingSkeleton } from "@/components/Skeletons"
+import { breadcrumbs, itemList, jsonLd } from "@/lib/jsonld"
 import { catalog } from "@/lib/storefront"
 
 export async function generateStaticParams() {
@@ -52,6 +53,7 @@ async function Content({ params }: { params: PageProps<"/c/[system]/[category]">
   const chips = [{ href: `/c/${system.slug}`, label: "All", active: false }, ...siblings.map((c) => ({ href: `/c/${system.slug}/${c.slug}`, label: c.name, active: c.id === category.id }))]
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd([breadcrumbs([{ name: system.name, path: `/c/${system.slug}` }, { name: category.name, path: `/c/${system.slug}/${category.slug}` }]), itemList(category.name, tiles)])} />
       <PageHead back={{ href: `/c/${system.slug}` as Route, label: system.shortName }} title={category.name}>
         {category.blurb ? <p className="max-w-[60ch] text-muted">{category.blurb}</p> : null}
         {tiles.some((t) => t.purchasable) ? null : <p className="max-w-[60ch] text-sm text-muted">Buy these at the shop in Malad West, or ask on WhatsApp for stock and a live photo.</p>}

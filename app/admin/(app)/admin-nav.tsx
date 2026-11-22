@@ -1,6 +1,6 @@
 "use client"
 
-import { Camera, House, IndianRupee, ListChecks, Package, ReceiptText } from "lucide-react"
+import { Camera, House, IndianRupee, ListChecks, Package, ReceiptText, Settings } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -12,6 +12,8 @@ const items = [
   { href: "/admin/photos", label: "Photos", icon: Camera },
   { href: "/admin/products/fix", label: "Fix", icon: ListChecks },
 ] as const
+
+const desktopOnly = [{ href: "/admin/settings", label: "Settings", icon: Settings }] as const
 
 function isActive(pathname: string | null, href: string) {
   if (pathname === null) return false
@@ -51,7 +53,7 @@ export function AdminNavView({ pathname }: { pathname: string | null }) {
           <img src="/wsgreen_light.svg" alt="WS Green admin" width={136} height={14} className="h-3.5 w-auto" />
         </picture>
         <ul className="flex flex-col gap-0.5">
-          {items.map(({ href, label, icon: Icon }) => {
+          {[...items, ...desktopOnly].map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href)
             return (
               <li key={href}>

@@ -1,10 +1,11 @@
 import { expect, test } from "vitest"
 import { normalise, searchProducts, searchTerms } from "./search"
 
-const item = (code: string | null, name: string, extra: string[] = [], purchasable = false) => ({
+const item = (code: string | null, name: string, context: string[] = [], purchasable = false) => ({
   code,
   name,
-  terms: searchTerms([code, name, ...extra]),
+  terms: searchTerms([code, name]),
+  context: searchTerms(context),
   image: null,
   purchasable,
   stock: { kind: "untracked" },
@@ -15,7 +16,8 @@ const items = [
   item("6203 2RS", "Ball bearing 6203 2RS", ["Bearings & ball racers"]),
   item(null, "SB50 power connector", ["Connectors"]),
   item(null, "Throttle with reverse switch", ["Throttles"]),
-  item(null, "Brake lever, Ola S1", ["Brake parts", "Ola S1"]),
+  item(null, "Brake lever, Ola S1", ["Brake parts"]),
+  item(null, "Cell holder 18650", ["Cells & holders", "Batteries & BMS"]),
   item("LB2 OVAL", "LED bulb LB2 oval", ["Bulbs & holders"]),
   item(null, "Battery box lock", ["Battery accessories"]),
 ]
@@ -49,4 +51,9 @@ test("too short or empty returns nothing", () => {
 test("purchasable ranks above display-only at equal score", () => {
   const both = [item(null, "Mirror left", [], false), item(null, "Mirror right", [], true)]
   expect(searchProducts(both, "mirror").map((i) => i.name)).toEqual(["Mirror right", "Mirror left"])
+})
+
+test("a category word alone does not drag in the whole category when names match", () => {
+  expect(names("bms")).toEqual(["Daly BMS 13S 40A, 48V"])
+  expect(names("holders")).toContain("Cell holder 18650")
 })

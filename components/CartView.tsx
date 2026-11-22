@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { clearCart, restoreCart, setQty, useCart, type CartLine } from "@/lib/cart"
+import { courierFee } from "@/lib/delivery"
 import { formatPaise } from "@/lib/format"
 import { hasRetailTier, nextBreak, perUnit, unitPrice } from "@/lib/pricing"
 import { useSnapshot } from "@/lib/snapshot"
@@ -58,7 +59,7 @@ function Grid({ tiles }: { tiles: Tile[] }) {
   )
 }
 
-export default function CartView({ scope, minOrderPaise }: { scope: string; minOrderPaise: number }) {
+export default function CartView({ scope, minOrderPaise, rates }: { scope: string; minOrderPaise: number; rates: Parameters<typeof courierFee>[0] }) {
   const lines = useCart()
   const { data, failed, retry } = useSnapshot(true)
   const [confirming, setConfirming] = useState(false)
@@ -128,6 +129,8 @@ export default function CartView({ scope, minOrderPaise }: { scope: string; minO
   const saved = priced.reduce((sum, p) => (p.tier === "wholesale" && p.tile.priced.retailPaise !== null && hasRetailTier(p.tile.priced) ? sum + (p.tile.priced.retailPaise - p.unit) * p.line.qty : sum), 0)
   const list: ListLine[] = priced.map((p) => ({ code: p.tile.code, name: p.tile.name, qty: p.line.qty, unit: p.tile.unit, unitPaise: p.unit, wholesale: p.tier === "wholesale" && p.tile.priced.retailPaise !== null }))
   const below = total < minOrderPaise
+  const fee = courierFee(rates, total)
+  const deliveryText = fee === null ? "Free pickup, or confirmed on WhatsApp" : fee === 0 ? "Free" : `${formatPaise(fee)} by courier, or free pickup`
   const more = popular(data, new Set(lines.map((l) => l.id)), new Set(priced.map((p) => p.tile.categoryId)), 4)
   const checkout = below ? (
     <span aria-disabled className={`${button.big} w-full opacity-50`}>
@@ -252,7 +255,7 @@ export default function CartView({ scope, minOrderPaise }: { scope: string; minO
             ) : null}
             <div className="flex justify-between">
               <dt className="text-muted">Delivery</dt>
-              <dd className="text-right">Free pickup, or confirmed on WhatsApp</dd>
+              <dd className="text-right">{deliveryText}</dd>
             </div>
             <div className="flex items-baseline justify-between border-t border-line pt-2">
               <dt className="font-semibold">Total</dt>

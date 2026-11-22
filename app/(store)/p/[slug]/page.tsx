@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Store, Truck } from "lucide-react"
+import { Check, ChevronLeft, ShieldCheck, Store, Truck } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound, permanentRedirect } from "next/navigation"
@@ -14,7 +14,7 @@ import { isIndia } from "@/lib/catalog"
 import { publicEnv } from "@/lib/env.public"
 import { formatPaise, unitWord } from "@/lib/format"
 import { breadcrumbs, jsonLd, productNode } from "@/lib/jsonld"
-import { listingPrice, priceCopy } from "@/lib/pricing"
+import { hasRetailTier, listingPrice, minQty, priceCopy } from "@/lib/pricing"
 import { catalog, productPage, type ProductPage } from "@/lib/storefront"
 import { button } from "@/lib/ui"
 import { askAboutPart, photoHelp, waLink } from "@/lib/whatsapp"
@@ -28,11 +28,17 @@ export async function generateMetadata({ params }: PageProps<"/p/[slug]">): Prom
   const page = await productPage((await params).slug)
   if (!page || "redirect" in page) return {}
   const { tile } = page
-  const title = page.seo.title ?? `${tile.code && !tile.name.includes(tile.code) ? `${tile.code} ${tile.name}` : tile.name} | WS Green, Malad West`
+  const base = tile.code && !tile.name.includes(tile.code) ? `${tile.name} ${tile.code}` : tile.name
+  const vehicle = page.fits[0]?.label
+  const title = page.seo.title ?? `${base}${vehicle && !base.toLowerCase().includes(vehicle.toLowerCase()) ? ` for ${vehicle}` : ""}, ${priceCopy(tile.priced, tile.unit).main} | WS Green Mumbai`
+  const description = page.seo.description ?? `${priceCopy(tile.priced, tile.unit).main}. ${summaryOf(page)}`.slice(0, 300)
+  const image = page.images[0]
+  const og = image ? `https://res.cloudinary.com/${publicEnv.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_jpg,q_auto,w_1200,h_630,c_pad,b_white/${image.publicId}` : undefined
   return {
     title: { absolute: title },
-    description: page.seo.description ?? `${tile.name}. ${priceCopy(tile.priced, tile.unit).main}. ${page.category.name} from Gulab Auto Garage, Malad West, Mumbai.`,
+    description,
     alternates: { canonical: `/p/${tile.slug}` },
+    openGraph: { title: base, description, type: "website", url: `/p/${tile.slug}`, siteName: "WS Green", images: og ? [{ url: og, width: 1200, height: 630, alt: tile.name }] : undefined },
     robots: page.images.length ? undefined : { index: false, follow: true },
   }
 }
@@ -53,10 +59,26 @@ function factsOf(page: ProductPage) {
   if (tile.code) facts.push(["Part code", tile.code])
   facts.push(["Category", page.category.name])
   facts.push(["Sold per", unitWord(tile.unit, 1)])
-  if (tile.priced.minOrderQty > 1) facts.push(["Minimum order", `${String(tile.priced.minOrderQty)} ${unitWord(tile.unit, tile.priced.minOrderQty)}`])
-  else if (tile.priced.moq > 1) facts.push(["Wholesale from", `${String(tile.priced.moq)} ${unitWord(tile.unit, tile.priced.moq)}`])
+  const min = minQty(tile.priced)
+  if (min > 1) facts.push(["Minimum order", `${String(min)} ${unitWord(tile.unit, min)}`])
+  if (tile.priced.retailPaise !== null && hasRetailTier(tile.priced)) facts.push(["Wholesale from", `${String(tile.priced.moq)} ${unitWord(tile.unit, tile.priced.moq)}`])
   if (tile.pickupOnly) facts.push(["Delivery", "Pickup only, or freight on quote"])
   return facts
+}
+
+function summaryOf(page: ProductPage) {
+  const { tile } = page
+  const min = minQty(tile.priced)
+  const fits = page.fits.map((f) => f.label)
+  const parts = [
+    `${tile.name}${tile.code && !tile.name.includes(tile.code) ? ` (part code ${tile.code})` : ""} is part of our ${page.category.name.toLowerCase()} range for electric two-wheelers.`,
+    page.maker ? `Made by ${page.maker}.` : null,
+    fits.length ? `Sold for the ${fits.join(", ")}. Check it against your old part, or send us a photo on WhatsApp before ordering.` : "Check it against your old part, or send us a photo on WhatsApp before ordering.",
+    `Sold per ${unitWord(tile.unit, 1)}${min > 1 ? `, minimum ${String(min)} ${unitWord(tile.unit, min)} per order` : ""}.`,
+    tile.priced.retailPaise !== null && hasRetailTier(tile.priced) ? `Buy ${String(tile.priced.moq)} or more and every piece is charged at the wholesale price.` : null,
+    tile.pickupOnly ? "This part cannot go by courier: pick it up at the shop in Malad West, or ask us for a transport quote." : "Pick it up at Gulab Auto Garage in Malad West, or get it delivered within Maharashtra.",
+  ]
+  return parts.filter((x) => x !== null).join(" ")
 }
 
 async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] }) {
@@ -76,13 +98,13 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
       { name: tile.name, path: `/p/${tile.slug}` },
     ]),
   ]
-  if (page.images.length && tile.compliant) {
+  if (page.images.length && tile.purchasable) {
     ld.push(
       productNode({
         name: tile.name,
         slug: tile.slug,
         code: tile.code,
-        description: page.description || `${tile.name}. ${page.category.name}, sold by Gulab Auto Garage, Malad West, Mumbai.`,
+        description: page.description || summaryOf(page),
         maker: page.maker,
         category: page.category.name,
         images: page.images,
@@ -91,6 +113,7 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
         inStock: tile.stock.kind !== "out",
         pickupOnly: tile.pickupOnly,
         fits: page.fits.filter((f) => f.verified).map((f) => f.label),
+        countryOfOrigin: legal.countryOfOrigin,
       }),
     )
   }
@@ -191,6 +214,29 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
               {delivery}
             </li>
             <li className="flex items-start gap-2">
+              <ShieldCheck aria-hidden className="mt-0.5 size-4.5 shrink-0 text-muted" strokeWidth={1.75} />
+              <span>
+                Faulty on arrival? We replace or refund it.{" "}
+                <Link href="/pages/returns" className="font-medium">
+                  Returns
+                </Link>
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Store aria-hidden className="mt-0.5 size-4.5 shrink-0 text-muted" strokeWidth={1.75} />
+              <span>
+                Sold by Gulab Auto Garage, a repair shop in Malad West for over 10 years.
+                {info.reviewLink ? (
+                  <>
+                    {" "}
+                    <a href={info.reviewLink} target="_blank" rel="noopener noreferrer" className="font-medium">
+                      Read our Google reviews
+                    </a>
+                  </>
+                ) : null}
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
               <WhatsAppIcon className="mt-0.5 size-4.5 shrink-0 text-muted" />
               <span>
                 Questions about this part?{" "}
@@ -233,14 +279,12 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
             </section>
           ) : null}
 
-          {page.description ? (
-            <section aria-labelledby="about" className={section}>
-              <h2 id="about" className="text-lg">
-                About this part
-              </h2>
-              <p className="max-w-[65ch] whitespace-pre-line">{page.description}</p>
-            </section>
-          ) : null}
+          <section aria-labelledby="about" className={section}>
+            <h2 id="about" className="text-lg">
+              About this part
+            </h2>
+            <p className="max-w-[65ch] whitespace-pre-line">{page.description || summaryOf(page)}</p>
+          </section>
 
           <section aria-label="Legal details" className="flex flex-col gap-1 border-t border-line pt-6 text-xs text-muted">
             <p>Sold by {info.legalName} (WS Green), Malad West, Mumbai.</p>

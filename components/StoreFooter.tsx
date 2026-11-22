@@ -42,18 +42,25 @@ export default function StoreFooter({ info }: { info: Info }) {
             <a href={DIRECTIONS} target="_blank" rel="noopener" className={`${link} font-medium text-ink`}>
               Get directions
             </a>
+            {info.reviewLink ? (
+              <>
+                {" "}
+                <a href={info.reviewLink} target="_blank" rel="noopener noreferrer" className={`${link} font-medium text-ink`}>
+                  Google reviews
+                </a>
+              </>
+            ) : null}
           </address>
           <p>
             <OpenStatus weekly={info.weeklyHours} special={info.specialHours} />
             <br />
             {hoursSummary(info.weeklyHours)}
           </p>
-          <p>
-            <a href={telLink} className={link}>
+          <p className="flex flex-col items-start">
+            <a href={telLink} className={`${link} inline-flex min-h-8 items-center`}>
               {BUSINESS.phone}
             </a>
-            <br />
-            <a href={`mailto:${BUSINESS.email}`} className={link}>
+            <a href={`mailto:${BUSINESS.email}`} className={`${link} inline-flex min-h-8 items-center`}>
               {BUSINESS.email}
             </a>
           </p>
@@ -68,10 +75,10 @@ export default function StoreFooter({ info }: { info: Info }) {
           ) : null}
         </div>
         <nav aria-label="Shop">
-          <ul className="flex flex-col gap-2.5">
+          <ul className="flex flex-col gap-1">
             {shop.map((l) => (
               <li key={l.href}>
-                <Link href={l.href} className={link}>
+                <Link href={l.href} className={`${link} inline-flex min-h-8 items-center`}>
                   {l.label}
                 </Link>
               </li>
@@ -79,10 +86,10 @@ export default function StoreFooter({ info }: { info: Info }) {
           </ul>
         </nav>
         <nav aria-label="Help">
-          <ul className="flex flex-col gap-2.5">
+          <ul className="flex flex-col gap-1">
             {help.map((l) => (
               <li key={l.href}>
-                <Link href={l.href} className={link}>
+                <Link href={l.href} className={`${link} inline-flex min-h-8 items-center`}>
                   {l.label}
                 </Link>
               </li>

@@ -2,16 +2,28 @@
 
 import { Search, ShoppingBag } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import { useCart } from "@/lib/cart"
+import { priceCopy } from "@/lib/pricing"
+import { searchProducts } from "@/lib/search"
+import { useSnapshot } from "@/lib/snapshot"
 import { button } from "@/lib/ui"
 import { waLink } from "@/lib/whatsapp"
-import BrowsePanel, { type BrowseSystem } from "./BrowsePanel"
+import type { BrowseSystem } from "./BrowseSheet"
 import Logo from "./Logo"
+import ProductImage from "./ProductImage"
 import WhatsAppIcon from "./WhatsAppIcon"
 
 function SearchField({ shortcut }: { shortcut: boolean }) {
   const ref = useRef<HTMLInputElement>(null)
+  const id = useId()
+  const router = useRouter()
+  const [q, setQ] = useState("")
+  const [focused, setFocused] = useState(false)
+  const [active, setActive] = useState(-1)
+  const [wanted, setWanted] = useState(false)
+  const { data } = useSnapshot(wanted)
   useEffect(() => {
     if (!shortcut) return
     const onKey = (e: KeyboardEvent) => {
@@ -26,6 +38,31 @@ function SearchField({ shortcut }: { shortcut: boolean }) {
       window.removeEventListener("keydown", onKey)
     }
   }, [shortcut])
+  const results = data && q.trim().length >= 2 ? searchProducts(data.tiles, q, 6) : []
+  const open = focused && q.trim().length >= 2 && data !== null
+  const go = (slug: string) => {
+    setFocused(false)
+    ref.current?.blur()
+    router.push(`/p/${slug}`)
+  }
+  const onKey = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (!open) return
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setActive((a) => Math.min(results.length - 1, a + 1))
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setActive((a) => Math.max(-1, a - 1))
+    } else if (e.key === "Escape") {
+      setFocused(false)
+    } else if (e.key === "Enter" && active >= 0) {
+      const hit = results[active]
+      if (hit) {
+        e.preventDefault()
+        go(hit.slug)
+      }
+    }
+  }
   return (
     <form action="/search" role="search" className="relative w-full">
       <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted" strokeWidth={1.75} />
@@ -35,10 +72,63 @@ function SearchField({ shortcut }: { shortcut: boolean }) {
         type="search"
         enterKeyHint="search"
         autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={`${id}-list`}
+        aria-autocomplete="list"
+        aria-activedescendant={open && active >= 0 ? `${id}-${String(active)}` : undefined}
         aria-label="Search parts by code, name or vehicle"
         placeholder="Search parts, codes or vehicles"
+        value={q}
+        onChange={(e) => {
+          setQ(e.currentTarget.value)
+          setActive(-1)
+        }}
+        onPointerDown={() => {
+          setWanted(true)
+        }}
+        onFocus={() => {
+          setWanted(true)
+          setFocused(true)
+        }}
+        onBlur={() => {
+          setTimeout(() => {
+            setFocused(false)
+          }, 150)
+        }}
+        onKeyDown={onKey}
         className="h-11 w-full rounded-control border border-line-strong bg-surface pr-3 pl-11 text-base placeholder:text-muted focus-visible:border-ink [&::-webkit-search-cancel-button]:hidden"
       />
+      {open ? (
+        <div className="absolute inset-x-0 top-full z-40 mt-1.5 overflow-hidden rounded-container border border-line bg-surface shadow-[0_16px_40px_-20px_rgb(21_25_22/0.45)]">
+          <ul id={`${id}-list`} role="listbox" aria-label="Suggestions" className="max-h-[60dvh] overflow-y-auto py-1">
+            {results.map((t, i) => (
+              <li key={t.id} id={`${id}-${String(i)}`} role="option" aria-selected={i === active}>
+                <Link
+                  href={`/p/${t.slug}`}
+                  onClick={() => {
+                    setFocused(false)
+                  }}
+                  className={`flex items-center gap-3 px-3 py-2 no-underline transition-colors duration-150 ease-out [@media(hover:hover)]:hover:bg-bg ${i === active ? "bg-bg" : ""}`}
+                >
+                  <span className="relative size-10 shrink-0 overflow-hidden rounded-[6px] border border-line bg-well">
+                    {t.image ? <ProductImage image={t.image} alt="" sizes="40px" /> : null}
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-medium">{t.name}</span>
+                    <span className="text-xs text-muted">{priceCopy(t.priced, t.unit).main}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+            {results.length === 0 ? <li className="px-3 py-3 text-sm text-muted">No part matches. Press Enter to search everything, or send us a photo on WhatsApp.</li> : null}
+          </ul>
+          <button type="submit" className="flex h-11 w-full items-center gap-2 border-t border-line px-3 text-left text-sm font-medium transition-colors duration-150 ease-out [@media(hover:hover)]:hover:bg-bg">
+            <Search aria-hidden className="size-4" strokeWidth={2} />
+            See all results for &lsquo;{q.trim()}&rsquo;
+          </button>
+        </div>
+      ) : null}
     </form>
   )
 }
@@ -80,11 +170,13 @@ export default function StoreHeader({ systems }: { systems: BrowseSystem[] }) {
           <Link href="/" aria-label="WS Green home" className="flex h-11 shrink-0 items-center">
             <Logo className="h-5 w-auto" />
           </Link>
-          <BrowsePanel systems={systems} triggerClassName={`${button.secondary} shrink-0`} />
-          <div className="max-w-[640px] flex-1">
+          <div className="max-w-[680px] flex-1">
             <SearchField shortcut />
           </div>
-          <a href={ask} target="_blank" rel="noopener" className="ml-auto flex h-11 shrink-0 items-center gap-2 font-medium no-underline transition-colors duration-150 ease-out [@media(hover:hover)]:hover:text-muted">
+          <Link href="/v" className="ml-auto flex h-11 shrink-0 items-center font-medium no-underline transition-colors duration-150 ease-out [@media(hover:hover)]:hover:text-muted">
+            Shop by vehicle
+          </Link>
+          <a href={ask} target="_blank" rel="noopener" className="flex h-11 shrink-0 items-center gap-2 font-medium no-underline transition-colors duration-150 ease-out [@media(hover:hover)]:hover:text-muted">
             <WhatsAppIcon className="size-5" />
             WhatsApp
           </a>
@@ -102,11 +194,6 @@ export default function StoreHeader({ systems }: { systems: BrowseSystem[] }) {
             </li>
           ))}
           <li className="ml-auto">
-            <Link href="/v" className={desktopLink}>
-              Shop by vehicle
-            </Link>
-          </li>
-          <li>
             <Link href="/wholesale" className={desktopLink}>
               Wholesale
             </Link>

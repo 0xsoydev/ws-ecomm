@@ -1,4 +1,4 @@
-export type Searchable = { code: string | null; name: string; terms: string; image: unknown; purchasable: boolean; stock: { kind: string } }
+export type Searchable = { code: string | null; name: string; terms: string; context: string; image: unknown; purchasable: boolean; stock: { kind: string } }
 
 const WORDS: Record<string, string> = {
   accelerator: "throttle",
@@ -49,6 +49,7 @@ function score(item: Searchable, q: string, tokens: readonly string[]) {
     if (words.some((w) => Math.abs(w.length - q.length) <= limit && distance(w, q) <= limit)) return 30
     if (tokens.length > 1 && tokens.every((t) => item.terms.split(" ").some((w) => w.startsWith(t) || (t.length >= 4 && distance(w, t) <= 1)))) return 25
   }
+  if (tokens.every((t) => item.context.includes(t) || item.terms.includes(t))) return 10
   return 0
 }
 
@@ -60,9 +61,10 @@ export function searchProducts<T extends Searchable>(items: readonly T[], query:
   const q = normalise(words.join(""))
   if (q.length < 2) return []
   const tokens = words.map(normalise).filter((t) => t.length > 0)
-  return items
-    .map((item) => ({ item, s: score(item, q, tokens) }))
-    .filter((r) => r.s > 0)
+  const scored = items.map((item) => ({ item, s: score(item, q, tokens) })).filter((r) => r.s > 0)
+  const direct = scored.some((r) => r.s > 10)
+  return scored
+    .filter((r) => !direct || r.s > 10)
     .sort(
       (a, b) =>
         b.s - a.s ||

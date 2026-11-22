@@ -17,7 +17,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["lib/env.ts", "lib/env.public.ts", "next.config.ts", "drizzle.config.ts", "scripts/**", "vitest.config.ts"],
+    files: ["lib/env.ts", "lib/env.public.ts", "next.config.ts", "drizzle.config.ts", "scripts/**", "vitest.config.ts", "playwright.config.ts", "e2e/**"],
     rules: { "no-restricted-properties": "off" },
   },
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "drizzle/**", "lib/auth-schema.ts", "graft/**", ".trail/**", ".opencode/**"]),

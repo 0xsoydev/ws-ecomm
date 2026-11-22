@@ -12,11 +12,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgres://ci:ci@127.0.0.1:5432/ci
-      BETTER_AUTH_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
-      BETTER_AUTH_URL: http://localhost:3000
-      NEXT_PUBLIC_SITE_URL: http://localhost:3000
-      PHONE_PEPPER: ci-pepper-ci-pepper-ci-pepper-ci-pepper
+      DATABASE_URL: postgres://postgres@127.0.0.1:55440/postgres
+      BETTER_AUTH_SECRET: e2e-secret-e2e-secret-e2e-secret-e2e-00
+      BETTER_AUTH_URL: http://localhost:3300
+      NEXT_PUBLIC_SITE_URL: http://localhost:3300
+      PHONE_PEPPER: e2e-pepper-e2e-pepper-e2e-pepper-e2e-00
+      BUILD_CPUS: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
@@ -26,6 +27,13 @@ jobs:
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run test
-      - run: bun run build
       - run: bunx drizzle-kit check
       - run: bun audit
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run e2e
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results
+          retention-days: 7

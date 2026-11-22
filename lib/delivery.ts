@@ -8,3 +8,9 @@ export function deliveryScope(s: Pick<StoreSettings, "localDeliveryPincodes" | "
   if (s.localDeliveryPincodes.length > 0) return "Local delivery in Mumbai"
   return "Pick up in Malad West"
 }
+
+export function courierFee(s: Pick<StoreSettings, "shippingBands" | "freeShippingFromPaise">, itemsPaise: number) {
+  if (s.freeShippingFromPaise !== null && itemsPaise >= s.freeShippingFromPaise) return 0
+  const band = [...s.shippingBands].sort((a, b) => a.upToPaise - b.upToPaise).find((b) => itemsPaise <= b.upToPaise)
+  return band ? band.feePaise : null
+}

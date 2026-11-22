@@ -57,6 +57,7 @@ type ProductInput = {
   inStock: boolean
   pickupOnly: boolean
   fits: readonly string[]
+  countryOfOrigin: string | null
 }
 
 export function productNode(p: ProductInput) {
@@ -72,6 +73,7 @@ export function productNode(p: ProductInput) {
     sku: p.code ?? undefined,
     brand: p.maker ? { "@type": "Brand", name: p.maker } : undefined,
     category: p.category,
+    countryOfOrigin: p.countryOfOrigin ?? undefined,
     isAccessoryOrSparePartFor: p.fits.length ? p.fits.map((name) => ({ "@type": "Product", name })) : undefined,
     offers: {
       "@type": "Offer",
@@ -83,7 +85,17 @@ export function productNode(p: ProductInput) {
       itemCondition: "https://schema.org/NewCondition",
       availability: p.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@id": `${site}/#business` },
+      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "IN", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 7, returnMethod: ["https://schema.org/ReturnInStore", "https://schema.org/ReturnByMail"], merchantReturnLink: `${site}/pages/returns` },
       availableDeliveryMethod: p.pickupOnly ? "https://schema.org/OnSitePickup" : undefined,
     },
+  }
+}
+
+export function itemList(name: string, items: readonly { slug: string; name: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    itemListElement: items.slice(0, 50).map((it, i) => ({ "@type": "ListItem", position: i + 1, url: `${site}/p/${it.slug}`, name: it.name })),
   }
 }

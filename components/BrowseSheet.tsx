@@ -2,9 +2,10 @@
 
 import { ChevronRight, ListOrdered, Scooter, Store, Warehouse } from "lucide-react"
 import Link from "next/link"
-import type { BrowseSystem } from "./BrowsePanel"
 import Sheet from "./Sheet"
 import SystemIcon from "./SystemIcon"
+
+export type BrowseSystem = { slug: string; name: string; shortName: string; count: number }
 
 const more = [
   { href: "/v", label: "Shop by vehicle", icon: Scooter },

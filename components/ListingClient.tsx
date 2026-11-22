@@ -3,17 +3,19 @@
 import { SlidersHorizontal, X } from "lucide-react"
 import Link from "next/link"
 import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs"
+import dynamic from "next/dynamic"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { applyFilter, BODY_LABELS, BODY_STYLES, facetCounts, SORT_LABELS, SORTS, type BodyStyle, type ListingFilter, type Sort } from "@/lib/listing"
 import type { Tile } from "@/lib/storefront"
 import { useStored, writeStored } from "@/lib/use-stored"
 import { button, chip } from "@/lib/ui"
-import Sheet from "./Sheet"
 
 export type ListingItem = { tile: Tile; node: ReactNode }
 export type ListingSection = { slug: string; name: string; items: ListingItem[] }
 export type VehicleOption = { key: string; id: number; label: string }
 export type ChipLink = { href: string; label: string; active: boolean }
+
+const Sheet = dynamic(() => import("./Sheet"), { ssr: false })
 
 const query = {
   vehicle: parseAsString,
@@ -46,6 +48,7 @@ export function ListingView({
   set?: (next: Partial<{ vehicle: string | null; body: BodyStyle | null; stock: boolean; sort: Sort }>) => void
 }) {
   const [sheet, setSheet] = useState(false)
+  const [opened, setOpened] = useState(false)
   const all = useMemo(() => sections.flatMap((s) => s.items.map((i) => i.tile)), [sections])
   const counts = facetCounts(all, filter)
   const shown = sections.map((s) => {
@@ -122,7 +125,10 @@ export function ListingView({
       <div className="min-w-0">
         <ChipRail chips={chips} sections={shown.filter((s) => s.kept.length > 0)} />
         <div className="flex items-center gap-3 py-3">
-          <button type="button" onClick={() => { setSheet(true); }} className={`${button.small} h-11 lg:hidden`}>
+          <button type="button" onClick={() => {
+              setOpened(true)
+              setSheet(true)
+            }} className={`${button.small} h-11 lg:hidden`}>
             <SlidersHorizontal aria-hidden className="size-4" strokeWidth={1.75} />
             Filter and sort{active.length ? ` (${String(active.length)})` : ""}
           </button>
@@ -153,6 +159,7 @@ export function ListingView({
         ) : null}
         {shown.map((s) => (s.kept.length ? <Section key={s.slug} slug={s.slug} name={shown.length > 1 ? s.name : null} items={s.kept} /> : null))}
       </div>
+      {opened ? (
       <Sheet
         open={sheet}
         onOpenChange={setSheet}
@@ -170,6 +177,7 @@ export function ListingView({
       >
         {controls}
       </Sheet>
+      ) : null}
     </div>
   )
 }

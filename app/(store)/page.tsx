@@ -9,7 +9,6 @@ import { catalog, storeInfo, type Tile } from "@/lib/storefront"
 import { button } from "@/lib/ui"
 
 const FLAGSHIP = "batteries-bms"
-const RAILS = 5
 const PER_RAIL = 10
 
 function ranked(tiles: Tile[]) {
@@ -25,7 +24,6 @@ export default async function Home() {
   const rails = [...data.systems]
     .filter((s) => s.count > 0)
     .sort((a, b) => Number(b.slug === FLAGSHIP) - Number(a.slug === FLAGSHIP) || b.count - a.count)
-    .slice(0, RAILS)
   const brands = [...new Map(data.models.map((m) => [m.brandSlug, m.brandName])).entries()]
 
   return (
@@ -52,9 +50,9 @@ export default async function Home() {
       </nav>
 
       <section className="mx-auto max-w-[1200px] px-4 pt-8 sm:px-6 lg:pt-12">
-        <h1 className="max-w-[24ch] text-2xl leading-[1.1] tracking-[-0.02em] sm:text-3xl lg:text-4xl">EV scooter spare parts, BMS and controllers</h1>
-        <p className="mt-2 max-w-[60ch] text-muted">
-          Retail and wholesale prices from Gulab Auto Garage, Malad West. {info.pickupOnly ? "Pick up at the shop." : `${info.scope}, or pick up at the shop.`}
+        <h1 className="max-w-[22ch] text-2xl leading-[1.1] tracking-[-0.02em] sm:text-3xl lg:text-4xl">Spare parts for electric scooters</h1>
+        <p className="mt-2 max-w-[62ch] text-muted">
+          BMS boards, controllers, lights, brakes and body parts, sold by Gulab Auto Garage in Malad West. {info.pickupOnly ? "Pick up at the shop." : `${info.scope}, or pick up at the shop.`}
         </p>
       </section>
 

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState, useTransition, type ReactNode, type SubmitEvent } from "react"
 import { placeOrder, type CheckoutResult } from "@/app/(store)/checkout/actions"
 import { clearCart, useCart } from "@/lib/cart"
+import { courierFee } from "@/lib/delivery"
 import { formatPaise, unitWord } from "@/lib/format"
 import { unitPrice } from "@/lib/pricing"
 import { useSnapshot } from "@/lib/snapshot"
@@ -67,7 +68,7 @@ function Choice({ name, value, checked, onChange, disabled, icon, title, detail 
   )
 }
 
-export default function CheckoutForm({ scope, courier, minOrderPaise }: { scope: string; courier: boolean; minOrderPaise: number }) {
+export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: { scope: string; courier: boolean; minOrderPaise: number; rates: Parameters<typeof courierFee>[0] }) {
   const lines = useCart()
   const { data, failed, retry } = useSnapshot(lines.length > 0)
   const saved = readSaved(useStored(SAVED))
@@ -119,6 +120,9 @@ export default function CheckoutForm({ scope, courier, minOrderPaise }: { scope:
   const mode = shipBlocked ? "pickup" : delivery
   const method = mode === "ship" ? "upi_manual" : payment
   const belowMinimum = itemsPaise < minOrderPaise
+  const fee = mode === "ship" ? courierFee(rates, itemsPaise) : 0
+  const totalPaise = itemsPaise + (fee ?? 0)
+  const shipFee = courierFee(rates, itemsPaise)
 
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -231,7 +235,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise }: { scope:
             disabled={shipBlocked}
             icon={<Truck aria-hidden className="size-5" strokeWidth={1.75} />}
             title={courier ? scope : "Delivery"}
-            detail={pickupOnly.length ? `${pickupOnly.map((p) => p.tile.code ?? p.tile.name).join(", ")} can only be picked up.` : courier ? "Delivery charge confirmed on WhatsApp before you pay." : "Not available right now."}
+            detail={pickupOnly.length ? `${pickupOnly.map((p) => p.tile.code ?? p.tile.name).join(", ")} can only be picked up.` : !courier ? "Not available right now." : shipFee === null ? "Delivery charge confirmed on WhatsApp before you pay." : shipFee === 0 ? "Free delivery. Pay by UPI once we confirm." : `${formatPaise(shipFee)} delivery. Pay by UPI once we confirm.`}
           />
           <Choice
             name="delivery"
@@ -327,13 +331,13 @@ export default function CheckoutForm({ scope, courier, minOrderPaise }: { scope:
           </div>
           <div className="flex justify-between">
             <dt className="text-muted">Delivery</dt>
-            <dd>{mode === "pickup" ? "Free pickup" : "Confirmed on WhatsApp"}</dd>
+            <dd>{mode === "pickup" ? "Free pickup" : fee === null ? "Confirmed on WhatsApp" : fee === 0 ? "Free" : formatPaise(fee)}</dd>
           </div>
           <div className="flex items-baseline justify-between pt-1">
             <dt className="font-semibold">Total</dt>
             <dd>
-              <NumberFlow value={itemsPaise / 100} locales="en-IN" format={rupees} className="text-xl font-semibold" />
-              {mode === "ship" ? <span className="text-sm text-muted"> + delivery</span> : null}
+              <NumberFlow value={totalPaise / 100} locales="en-IN" format={rupees} className="text-xl font-semibold" />
+              {fee === null ? <span className="text-sm text-muted"> + delivery</span> : null}
             </dd>
           </div>
         </dl>
@@ -355,7 +359,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise }: { scope:
         <div data-bar="send" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:static lg:border-0 lg:p-0">
           <button type="submit" disabled={pending || belowMinimum} className={`${button.big} w-full`}>
             {pending ? <LoaderCircle aria-hidden className="size-5 animate-spin" strokeWidth={2} /> : null}
-            {pending ? "Placing order" : `Place order, ${formatPaise(itemsPaise)}`}
+            {pending ? "Placing order" : `Place order, ${formatPaise(totalPaise)}`}
           </button>
         </div>
         <p className="text-xs text-muted">

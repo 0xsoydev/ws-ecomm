@@ -15,9 +15,11 @@ const csp = [
 ].join("; ")
 
 const indexable = process.env.SITE_INDEXABLE === "true"
+const buildCpus = Number(process.env.BUILD_CPUS) || undefined
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  experimental: { cpus: buildCpus },
   partialPrefetching: true,
   typedRoutes: true,
   poweredByHeader: false,

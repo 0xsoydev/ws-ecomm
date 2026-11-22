@@ -33,6 +33,7 @@ export type Tile = {
   bodyStyle: (typeof products.$inferSelect)["bodyStyle"]
   vehicles: { modelId: number; verified: boolean }[]
   terms: string
+  context: string
 }
 
 export type System = { id: number; slug: string; name: string; shortName: string; blurb: string; count: number }
@@ -53,6 +54,9 @@ export async function storeInfo() {
     gstin: isRegistered(regime.scheme) ? regime.gstin : null,
     legalName: s.legalName,
     minOrderPaise: s.minOrderPaise,
+    shippingBands: s.shippingBands,
+    freeShippingFromPaise: s.freeShippingFromPaise,
+    reviewLink: s.reviewLink,
     grievanceOfficer: s.grievanceOfficer,
   }
 }
@@ -127,15 +131,13 @@ export async function catalog() {
         p.name,
         p.aliases,
         p.maker,
-        category.name,
-        system.name,
-        system.shortName,
         ...vehicles.flatMap((v) => {
           const m = modelById.get(v.modelId)
           return m ? [m.brandName, m.name, m.aliases] : []
         }),
         ...reviewedSpecs,
       ]),
+      context: searchTerms([category.name, system.name, system.shortName]),
     })
   }
 

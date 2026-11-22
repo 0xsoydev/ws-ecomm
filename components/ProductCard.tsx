@@ -15,12 +15,18 @@ export default function ProductCard({ tile, sizes = CARD_SIZES }: { tile: Tile; 
   const copy = priceCopy(tile.priced, tile.unit)
   return (
     <article className="group relative flex h-full w-full flex-col overflow-hidden rounded-container border border-line bg-surface">
-      <div className="relative aspect-square overflow-hidden bg-well">
-        {tile.image ? <ProductImage image={tile.image} alt={tile.name} sizes={sizes} /> : <Placeholder systemSlug={tile.systemSlug} code={tile.code} size="tile" />}
+      <div className="relative aspect-square overflow-hidden border-b border-line bg-well">
+        {tile.image ? (
+          <div className="absolute inset-3 overflow-hidden rounded-[6px]">
+            <ProductImage image={tile.image} alt={tile.name} sizes={sizes} />
+          </div>
+        ) : (
+          <Placeholder systemSlug={tile.systemSlug} code={tile.code} size="tile" />
+        )}
         {badge ? <span className={`absolute top-2 left-2 rounded-full border bg-surface px-2 py-0.5 text-xs font-medium ${badgeTone[badge.tone]}`}>{badge.text}</span> : null}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
-        <h3 className="line-clamp-2 min-h-[2lh] text-sm leading-snug font-medium">
+        <h3 className="line-clamp-3 min-h-[3lh] text-sm leading-snug font-medium">
           <Link href={`/p/${tile.slug}`} className="no-underline after:absolute after:inset-0 [@media(hover:hover)]:group-hover:underline">
             {tile.name}
           </Link>

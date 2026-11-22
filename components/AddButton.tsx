@@ -202,7 +202,7 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
 
   return (
     <m.div
-      className={`relative z-10 overflow-hidden rounded-control border transition-colors duration-200 ease-out ${size === "card" ? `h-10 w-full border-ink ${open ? "bg-ink text-bg" : "bg-accent text-on-accent"}` : `h-11 bg-surface text-ink ${open ? "border-ink" : "border-line-strong"}`}`}
+      className={`relative z-10 overflow-hidden rounded-control border transition-colors duration-200 ease-out ${size === "card" ? `h-11 w-full ${open ? "border-ink bg-ink text-bg" : "border-line-strong bg-surface text-ink"}` : `h-11 bg-surface text-ink ${open ? "border-ink" : "border-line-strong"}`}`}
       initial={false}
       animate={size === "row" ? { width: open ? 112 : 44 } : undefined}
       transition={reduce ? { duration: 0 } : { duration: 0.25, ease: EASE }}
