@@ -36,11 +36,13 @@ function Section({ title, children, note }: { title: string; children: ReactNode
 
 function Field({ label, hint, children, wide }: { label: string; hint?: string; children: ReactNode; wide?: boolean }) {
   return (
-    <label className={`flex min-w-0 flex-col gap-1.5 ${wide ? "sm:col-span-2" : ""}`}>
-      <span className="text-sm font-semibold">{label}</span>
-      {children}
+    <div className={`flex min-w-0 flex-col gap-1.5 ${wide ? "sm:col-span-2" : ""}`}>
+      <label className="flex min-w-0 flex-col gap-1.5">
+        <span className="text-sm font-semibold">{label}</span>
+        {children}
+      </label>
       {hint && <span className="text-sm text-muted">{hint}</span>}
-    </label>
+    </div>
   )
 }
 

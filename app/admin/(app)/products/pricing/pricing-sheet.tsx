@@ -170,6 +170,7 @@ export function PricingSheet({ rows, canApprove }: { rows: Row[]; canApprove: bo
                 </p>
                 <div className="col-start-2 md:col-start-4">
                   {tiered ? (
+                    <div className="flex flex-col gap-1">
                     <label className="flex flex-col gap-1">
                       <span className="text-sm text-muted">
                         Retail, 1 to {r.moq - 1} {r.unit}
@@ -194,10 +195,11 @@ export function PricingSheet({ rows, canApprove }: { rows: Row[]; canApprove: bo
                           }}
                         />
                       </span>
+                    </label>
                       <span id={`price-note-${String(r.id)}`} className={`min-h-5 text-sm ${state.error ? "text-danger" : "text-muted"}`}>
                         {state.error ?? state.note}
                       </span>
-                    </label>
+                    </div>
                   ) : (
                     <span className="text-sm text-muted">Confirm the single price</span>
                   )}

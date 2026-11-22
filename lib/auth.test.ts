@@ -1,34 +1,21 @@
 import { describe, expect, test } from "vitest"
-import { authMethodFor, enrolmentExpired, roles, rolesOf } from "./auth"
+import { authMethodFor, isAllowedMethod, roles, rolesOf } from "./auth"
 
 describe("authMethodFor", () => {
-  test("only the passkey verification endpoint yields a passkey session", () => {
+  test("passkey verification yields a passkey session", () => {
     expect(authMethodFor("/passkey/verify-authentication")).toBe("passkey")
   })
 
-  test("email OTP sign-in yields an otp session", () => {
-    expect(authMethodFor("/sign-in/email-otp")).toBe("otp")
+  test("email and password sign-in, and the session re-issued by a password change, are password sessions", () => {
+    expect(authMethodFor("/sign-in/email")).toBe("password")
+    expect(authMethodFor("/change-password")).toBe("password")
   })
 
-  test("any other session-creating path is unknown and therefore denied", () => {
-    for (const path of ["/sign-in/passkey", "/passkey/authenticate", "/sign-in/social", "/admin/impersonate-user", undefined]) {
+  test("any other session-creating path is unknown and denied, email codes included", () => {
+    for (const path of ["/sign-in/email-otp", "/sign-in/passkey", "/sign-in/social", "/admin/impersonate-user", "/sign-up/email", undefined]) {
       expect(authMethodFor(path)).toBe("unknown")
+      expect(isAllowedMethod(authMethodFor(path))).toBe(false)
     }
-  })
-})
-
-describe("enrolmentExpired", () => {
-  const createdAt = new Date("2026-11-22T10:00:00Z")
-  const at = (minutes: number) => createdAt.getTime() + minutes * 60_000
-
-  test("an OTP session can enrol for 15 minutes from creation, whatever its refreshed expiry", () => {
-    expect(enrolmentExpired({ authMethod: "otp", createdAt }, at(14))).toBe(false)
-    expect(enrolmentExpired({ authMethod: "otp", createdAt }, at(15))).toBe(true)
-    expect(enrolmentExpired({ authMethod: "unknown", createdAt }, at(16))).toBe(true)
-  })
-
-  test("passkey sessions never hit the enrolment window", () => {
-    expect(enrolmentExpired({ authMethod: "passkey", createdAt }, at(60 * 24))).toBe(false)
   })
 })
 

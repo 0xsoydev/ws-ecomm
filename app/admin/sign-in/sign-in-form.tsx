@@ -4,104 +4,73 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { authClient } from "@/lib/auth-client"
 
-type Step = "start" | "email" | "code"
-
 const field = "h-12 w-full rounded-control border border-line-strong bg-surface px-3 text-base"
 const primary =
   "inline-flex h-12 w-full items-center justify-center rounded-control border border-ink bg-accent px-5 font-semibold text-on-accent transition-transform duration-150 ease-out active:scale-[0.96] disabled:opacity-60"
-const secondary = "text-sm underline transition-colors duration-200 ease-out hover:text-muted"
+const secondary =
+  "inline-flex h-12 w-full items-center justify-center rounded-control border border-line-strong bg-surface px-5 font-semibold transition-[background-color,transform] duration-200 ease-out active:scale-[0.96] disabled:opacity-60 [@media(hover:hover)]:hover:bg-bg"
 
 export function SignInForm() {
   const router = useRouter()
   const params = useSearchParams()
-  const [step, setStep] = useState<Step>("start")
   const [email, setEmail] = useState("")
-  const [code, setCode] = useState("")
-  const [busy, setBusy] = useState(false)
+  const [password, setPassword] = useState("")
+  const [busy, setBusy] = useState<"passkey" | "password" | null>(null)
   const [error, setError] = useState(params.get("error") === "no-access" ? "This account has no admin access. Ask the owner to add you." : "")
 
   async function signInWithPasskey() {
-    setBusy(true)
+    setBusy("passkey")
     setError("")
     const { error: failed } = await authClient.signIn.passkey()
-    setBusy(false)
+    setBusy(null)
     if (failed) {
-      setError("Passkey sign-in did not finish. Try again, or use a code if this is a new device.")
+      setError("Passkey sign-in did not finish. Try again, or use your email and password.")
       return
     }
     router.push("/admin")
   }
 
-  async function sendCode() {
-    setBusy(true)
+  async function signInWithPassword() {
+    setBusy("password")
     setError("")
-    await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" })
-    setBusy(false)
-    setStep("code")
-  }
-
-  async function verifyCode() {
-    setBusy(true)
-    setError("")
-    const { error: failed } = await authClient.signIn.emailOtp({ email, otp: code })
-    setBusy(false)
+    const { error: failed } = await authClient.signIn.email({ email: email.trim(), password })
+    setBusy(null)
     if (failed) {
-      setError("That code did not work. Check the latest email, or request a new code.")
+      setError(failed.status === 429 ? "Too many attempts. Wait a minute and try again." : "That email and password do not match an admin account.")
       return
     }
-    router.push("/admin/enrol")
+    router.push("/admin")
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {step === "start" && (
-        <>
-          <button type="button" className={primary} disabled={busy} onClick={() => void signInWithPasskey()}>
-            {busy ? "Waiting for your passkey" : "Sign in with passkey"}
-          </button>
-          <button type="button" className={secondary} onClick={() => { setStep("email") }}>
-            New device? Set it up with an email code
-          </button>
-        </>
-      )}
-      {step === "email" && (
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); void sendCode() }}>
-          <label className="flex flex-col gap-2">
-            <span className="font-semibold">Staff email</span>
-            <input className={field} type="email" autoComplete="email" required value={email} onChange={(e) => { setEmail(e.target.value) }} />
-          </label>
-          <button type="submit" className={primary} disabled={busy}>
-            {busy ? "Sending code" : "Send code"}
-          </button>
-          <button type="button" className={secondary} onClick={() => { setStep("start") }}>
-            Use a passkey instead
-          </button>
-        </form>
-      )}
-      {step === "code" && (
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); void verifyCode() }}>
-          <p className="text-muted">If {email} is a staff account without a passkey, a 6-digit code is on its way. It works for 5 minutes.</p>
-          <label className="flex flex-col gap-2">
-            <span className="font-semibold">Code</span>
-            <input
-              className={`${field} tracking-[0.3em]`}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="\d{6}"
-              maxLength={6}
-              required
-              value={code}
-              onChange={(e) => { setCode(e.target.value.replace(/\D/g, "")) }}
-            />
-          </label>
-          <button type="submit" className={primary} disabled={busy}>
-            {busy ? "Checking" : "Continue"}
-          </button>
-          <button type="button" className={secondary} onClick={() => { setStep("email") }}>
-            Send a new code
-          </button>
-        </form>
-      )}
+    <div className="flex flex-col gap-8">
+      <button type="button" className={primary} disabled={busy !== null} onClick={() => void signInWithPasskey()}>
+        {busy === "passkey" ? "Waiting for your passkey" : "Sign in with passkey"}
+      </button>
+      <div className="flex items-center gap-3 text-sm text-muted" aria-hidden>
+        <span className="h-px flex-1 bg-line" />
+        or
+        <span className="h-px flex-1 bg-line" />
+      </div>
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void signInWithPassword()
+        }}
+      >
+        <label className="flex flex-col gap-2">
+          <span className="font-semibold">Email</span>
+          <input className={field} type="email" autoComplete="username" required value={email} onChange={(e) => { setEmail(e.target.value) }} />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="font-semibold">Password</span>
+          <input className={field} type="password" autoComplete="current-password" required value={password} onChange={(e) => { setPassword(e.target.value) }} />
+        </label>
+        <button type="submit" className={secondary} disabled={busy !== null}>
+          {busy === "password" ? "Signing in" : "Sign in with password"}
+        </button>
+      </form>
       <p role="alert" aria-live="polite" className="min-h-6 text-sm text-danger">
         {error}
       </p>

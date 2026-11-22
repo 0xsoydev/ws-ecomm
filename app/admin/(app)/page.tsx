@@ -123,10 +123,16 @@ async function Readiness() {
           </ul>
         </section>
       )}
-      <footer className="flex items-center justify-between gap-4 border-t border-line pt-6 text-sm text-muted">
-        <span>
-          {user.name}, {rolesOf(user.role).join(", ")}
+      <footer className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-6 text-sm text-muted">
+        <span className="min-w-0 flex-1 basis-full sm:basis-auto">
+          {user.email}, {rolesOf(user.role).join(", ")}
         </span>
+        <Link href="/admin/enrol" className="text-ink">
+          Add a passkey
+        </Link>
+        <Link href="/admin/password" className="text-ink">
+          Change password
+        </Link>
         <SignOutButton />
       </footer>
     </>
