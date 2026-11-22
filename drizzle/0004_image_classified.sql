@@ -1,0 +1,1 @@
+ALTER TABLE "product_image" ADD COLUMN "classified" boolean DEFAULT false NOT NULL;

@@ -27,7 +27,8 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
+    loader: "custom",
+    loaderFile: "./lib/cloudinary-loader.ts",
   },
   headers: () =>
     Promise.resolve([

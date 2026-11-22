@@ -76,7 +76,6 @@
     font-family: var(--font-sans);
     font-weight: 450;
     line-height: 1.55;
-    font-variant-numeric: tabular-nums;
     overscroll-behavior-y: none;
   }
 

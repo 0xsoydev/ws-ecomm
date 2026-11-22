@@ -209,6 +209,7 @@ export const productImages = pgTable("product_image", {
   ownPhoto: boolean().notNull().default(false),
   watermarked: boolean().notNull().default(false),
   onWhite: boolean().notNull().default(true),
+  classified: boolean().notNull().default(false),
 }, (t) => [index("product_image_product").on(t.productId, t.position)])
 
 export const productVehicles = pgTable("product_vehicle", {
