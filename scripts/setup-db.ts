@@ -33,13 +33,24 @@ try {
     `GRANT CONNECT ON DATABASE "${database}" TO app, backup`,
     "GRANT USAGE, CREATE ON SCHEMA public TO migrate",
     "GRANT USAGE ON SCHEMA public TO app, backup",
-    "ALTER DEFAULT PRIVILEGES FOR ROLE migrate IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app",
-    "ALTER DEFAULT PRIVILEGES FOR ROLE migrate IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app",
-    "ALTER DEFAULT PRIVILEGES FOR ROLE migrate IN SCHEMA public GRANT SELECT ON TABLES TO backup",
-    "ALTER DEFAULT PRIVILEGES FOR ROLE migrate IN SCHEMA public GRANT SELECT ON SEQUENCES TO backup",
-    "ALTER DEFAULT PRIVILEGES FOR ROLE migrate IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC",
   ]
   for (const statement of statements) await client.query(statement)
+  const migrateUrl = new URL(env.DATABASE_URL_OWNER)
+  migrateUrl.username = "migrate"
+  migrateUrl.password = env.MIGRATE_DB_PASSWORD
+  const asMigrate = new Client({ connectionString: migrateUrl.toString() })
+  await asMigrate.connect()
+  try {
+    for (const statement of [
+      "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app",
+      "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app",
+      "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO backup",
+      "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO backup",
+      "ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC",
+    ]) await asMigrate.query(statement)
+  } finally {
+    await asMigrate.end()
+  }
   console.info("Roles migrate, app and backup are ready. Use them in DATABASE_URL_MIGRATE, DATABASE_URL and DATABASE_URL_BACKUP.")
 } finally {
   await client.end()

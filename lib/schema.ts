@@ -17,6 +17,7 @@ export const chargeKind = pgEnum("charge_kind", ["shipping", "cod_fee", "freight
 export const documentType = pgEnum("document_type", ["tax_invoice", "bill_of_supply", "cash_memo", "credit_note"])
 export const gstScheme = pgEnum("gst_scheme", ["regular", "composition", "unregistered"])
 export const batteryKind = pgEnum("battery_kind", ["none", "cell", "pack"])
+export const bodyStyle = pgEnum("body_style", ["dl_model", "sl_model", "loader", "three_wheeler"])
 export const authEventKind = pgEnum("auth_event_kind", ["otp_sent", "otp_failed", "sign_in", "passkey_sign_in", "sign_out", "banned", "role_changed"])
 export const paymentProvider = pgEnum("payment_provider", ["razorpay", "manual"])
 export const paymentStatus = pgEnum("payment_status", ["authorized", "captured", "failed", "refunded"])
@@ -112,7 +113,6 @@ export const categories = pgTable("category", {
   position: integer().notNull(),
   defaultWeightGrams: integer(),
   quoteShipping: boolean().notNull().default(false),
-  bodyStyle: text(),
   legacyName: text(),
 }, (t) => [uniqueIndex("category_system_slug").on(t.systemId, t.slug), index("category_system").on(t.systemId)])
 
@@ -143,6 +143,7 @@ export const products = pgTable("product", {
   prePackaged: boolean(),
   netQuantity: text(),
   batteryKind: batteryKind().notNull().default("none"),
+  bodyStyle: bodyStyle(),
   bisRegistration: text(),
   bisVerifiedAt: timestamp({ withTimezone: true }),
   groupKey: text(),

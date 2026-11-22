@@ -22,6 +22,13 @@
       "when": 1795353341200,
       "tag": "0002_ledgers_purge_seed",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795354636297,
+      "tag": "0003_product_body_style",
+      "breakpoints": true
     }
   ]
 }

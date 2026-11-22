@@ -15,3 +15,4 @@ next-env.d.ts
 graft/.cache
 .claude/settings.local.json
 /.opencode/
+/migration-report.md
