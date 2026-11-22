@@ -4,10 +4,11 @@ import NumberFlow from "@number-flow/react"
 import { Check, Minus, Plus, ShoppingBag, Trash } from "lucide-react"
 import { m } from "motion/react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type PointerEvent } from "react"
 import { announceAdd, setQty as setCartQty, useCart } from "@/lib/cart"
-import { formatPaise, unitWord } from "@/lib/format"
-import { hasRetailTier, MAX_LINE_QTY, minQty, nextBreak, unitPrice, type Priced } from "@/lib/pricing"
+import { unitWord } from "@/lib/format"
+import { hasRetailTier, MAX_LINE_QTY, minQty, nextBreak, perUnit, unitPrice, type Priced } from "@/lib/pricing"
 import { button } from "@/lib/ui"
 import { validQty } from "./AddButton"
 import StickyBar from "./StickyBar"
@@ -124,15 +125,30 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
   const tiers = priced.retailPaise !== null && hasRetailTier(priced)
   const chips = priced.moq > 1 ? [priced.moq, priced.moq * 2, priced.moq * 4].filter((n) => n <= MAX_LINE_QTY) : []
   const step = priced.orderStep
+  const router = useRouter()
   const add = () => {
     setCartQty(id, validQty(priced, picked))
     announceAdd(id)
     if ("vibrate" in navigator) navigator.vibrate(10)
   }
+  const buyNow = () => {
+    if (!inCart) setCartQty(id, validQty(priced, picked))
+    router.push("/checkout")
+  }
   const retailLabel = priced.moq - 1 === 1 ? `1 ${unitWord(unit, 1)}` : `1 to ${String(priced.moq - 1)} ${unitWord(unit, 2)}`
 
   return (
     <div className="flex flex-col gap-4">
+      {tiers ? null : (
+        <p className="flex flex-col">
+          <span className="text-3xl font-semibold tracking-[-0.01em]">{perUnit(priced.retailPaise ?? priced.wholesalePaise, unit)}</span>
+          {min > 1 ? (
+            <span className="text-sm text-muted">
+              Minimum {min} {unitWord(unit, min)}
+            </span>
+          ) : null}
+        </p>
+      )}
       {tiers && priced.retailPaise !== null ? (
         <div role="radiogroup" aria-label="Price per piece" className="grid grid-cols-2 gap-2">
           {[
@@ -151,7 +167,7 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
               >
                 {on ? <m.span layoutId={`tier-${String(id)}`} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0 rounded-[7px] bg-accent" /> : null}
                 <span className={`relative text-sm ${on ? "" : "text-muted"}`}>{t.label}</span>
-                <span className="relative text-lg font-semibold">{formatPaise(t.paise)} each</span>
+                <span className="relative text-lg font-semibold">{perUnit(t.paise, unit)}</span>
                 <span className="relative flex h-5 items-center gap-1 text-sm">
                   {t.note}
                   {on && t.note ? <Check aria-hidden className="size-4" strokeWidth={2.25} /> : null}
@@ -189,7 +205,7 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
       <p className="min-h-6 text-sm" aria-live="polite">
         {brk ? (
           <>
-            Add {brk.addQty} more for <span className="font-semibold">{formatPaise(brk.paise)} each</span>
+            Add {brk.addQty} more for <span className="font-semibold">{perUnit(brk.paise, unit)}</span>
           </>
         ) : tiers && tier === "wholesale" ? (
           <span className="inline-flex items-center gap-1 font-medium">
@@ -201,17 +217,20 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
         ) : null}
       </p>
 
-      <div id="buy-main">
+      <div id="buy-main" className="grid grid-cols-2 gap-2">
         {inCart ? (
-          <Link href="/cart" className={`${button.inkBig} w-full`}>
+          <Link href="/cart" className={`${button.secondary} h-13 text-lg no-underline`}>
             <ShoppingBag aria-hidden className="size-5" strokeWidth={1.75} />
-            In cart. View cart
+            View cart
           </Link>
         ) : (
-          <button type="button" onClick={add} className={`${button.big} w-full`}>
+          <button type="button" onClick={add} className={button.big}>
             Add to cart
           </button>
         )}
+        <button type="button" onClick={buyNow} className={inCart ? button.big : button.inkBig}>
+          {inCart ? "Checkout" : "Buy now"}
+        </button>
       </div>
 
       <StickyBar targetId="buy-main" label={`Buy ${name}`}>
@@ -219,9 +238,9 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
           {inCart ? (
             <>
               <Stepper value={qty} onChange={setQty} min={min} step={step} name={name} removable />
-              <Link href="/cart" className={`${button.ink} h-12 flex-1`}>
-                View cart
-              </Link>
+              <button type="button" onClick={buyNow} className={`${button.big} h-12 flex-1 text-base`}>
+                Checkout
+              </button>
             </>
           ) : (
             <>

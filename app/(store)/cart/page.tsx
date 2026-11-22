@@ -10,7 +10,7 @@ export default async function CartPage() {
   return (
     <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
       <PageHead back={{ href: "/", label: "Keep shopping" }} title="Cart" />
-      <CartView scope={info.scope} />
+      <CartView scope={info.scope} minOrderPaise={info.minOrderPaise} />
     </div>
   )
 }

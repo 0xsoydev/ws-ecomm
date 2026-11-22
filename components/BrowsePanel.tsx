@@ -14,7 +14,7 @@ export default function BrowsePanel({ systems, triggerClassName }: { systems: Br
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger className={`${triggerClassName} gap-1.5 data-popup-open:bg-surface`}>
-        Browse
+        Categories
         <ChevronDown aria-hidden className="size-4 transition-transform duration-200 ease-out [[data-popup-open]_&]:rotate-180" strokeWidth={1.75} />
       </Popover.Trigger>
       <Popover.Portal>

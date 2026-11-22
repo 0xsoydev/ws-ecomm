@@ -42,14 +42,13 @@ export function proposeRetailPaise(wholesalePaise: number) {
 
 export type PriceCopy = { main: string; sub: string | null }
 
-export const ASK_BELOW_BREAK = "Fewer? Ask on WhatsApp"
+export function perUnit(paise: number, unit: string) {
+  return `${formatPaise(paise)} / ${unitWord(unit, 1)}`
+}
 
 export function priceCopy(p: Priced, unit: string): PriceCopy {
-  if (p.minOrderQty > 1) {
-    const { paise, qty } = listingPrice(p)
-    return { main: `Minimum ${qty} ${unitWord(unit, qty)}: ${formatPaise(paise)}`, sub: `${formatPaise(unitPrice(p, qty).paise)} each` }
-  }
-  if (p.retailPaise === null && p.moq > 1) return { main: `${formatPaise(p.wholesalePaise)} each from ${p.moq} ${unitWord(unit, p.moq)}`, sub: ASK_BELOW_BREAK }
-  if (p.retailPaise !== null && hasRetailTier(p)) return { main: `${formatPaise(p.retailPaise)} each`, sub: `${formatPaise(p.wholesalePaise)} each from ${p.moq}` }
-  return { main: `${formatPaise(p.retailPaise ?? p.wholesalePaise)} each`, sub: null }
+  const min = minQty(p)
+  if (p.retailPaise !== null && hasRetailTier(p)) return { main: perUnit(p.retailPaise, unit), sub: `${perUnit(p.wholesalePaise, unit)} from ${String(p.moq)}` }
+  const paise = p.retailPaise ?? p.wholesalePaise
+  return { main: perUnit(paise, unit), sub: min > 1 ? `Minimum ${String(min)} ${unitWord(unit, min)}` : null }
 }

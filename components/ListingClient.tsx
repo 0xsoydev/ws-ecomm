@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutGrid, List, SlidersHorizontal, X } from "lucide-react"
+import { SlidersHorizontal, X } from "lucide-react"
 import Link from "next/link"
 import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
@@ -10,7 +10,7 @@ import { useStored, writeStored } from "@/lib/use-stored"
 import { button, chip } from "@/lib/ui"
 import Sheet from "./Sheet"
 
-export type ListingItem = { tile: Tile; row: ReactNode; card: ReactNode | null }
+export type ListingItem = { tile: Tile; node: ReactNode }
 export type ListingSection = { slug: string; name: string; items: ListingItem[] }
 export type VehicleOption = { key: string; id: number; label: string }
 export type ChipLink = { href: string; label: string; active: boolean }
@@ -56,7 +56,6 @@ export function ListingView({
     ).flatMap((t) => byId.get(t.id) ?? [])
     return { ...s, kept }
   })
-  const buyableTotal = all.filter((t) => t.purchasable).length
   const active = [
     vehicle ? { label: vehicle.label, clear: () => { set({ vehicle: null }); } } : null,
     filter.body ? { label: BODY_LABELS[filter.body], clear: () => { set({ body: null }); } } : null,
@@ -130,7 +129,6 @@ export function ListingView({
           <p className="text-sm text-muted" aria-live="polite">
             {counts.total} {counts.total === 1 ? "part" : "parts"}
           </p>
-          {buyableTotal >= 4 ? <ViewToggle /> : null}
         </div>
         <VehicleOffer vehicles={vehicles} current={vehicle} apply={(key) => { set({ vehicle: key }); }} />
         {active.length ? (
@@ -177,8 +175,6 @@ export function ListingView({
 }
 
 function Section({ slug, name, items }: { slug: string; name: string | null; items: ListingItem[] }) {
-  const buyable = items.filter((i) => i.card !== null)
-  const atShop = items.filter((i) => i.card === null)
   return (
     <section id={`s-${slug}`} data-section={slug} aria-label={name ?? undefined} className="scroll-mt-[calc(var(--header-h)+60px)] pt-6 first:pt-2">
       {name ? (
@@ -187,54 +183,14 @@ function Section({ slug, name, items }: { slug: string; name: string | null; ite
           <span className="text-sm font-normal text-muted">{items.length}</span>
         </h2>
       ) : null}
-      {buyable.length ? (
-        <>
-          <ul className="buy-grid grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 xl:grid-cols-4">
-            {buyable.map((i) => (
-              <li key={i.tile.id} className="flex">
-                {i.card}
-              </li>
-            ))}
-          </ul>
-          <ul className="buy-list divide-y divide-line">
-            {buyable.map((i) => (
-              <li key={i.tile.id}>{i.row}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      {atShop.length ? (
-        buyable.length >= 2 ? (
-          <details className="group mt-6 border-t border-line">
-            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 font-semibold">
-              More parts at the shop ({atShop.length})<span className="text-sm font-normal text-muted group-open:hidden">Show</span>
-            </summary>
-            <p className="text-sm text-muted">Ask on WhatsApp or buy at the shop.</p>
-            <Rows items={atShop} />
-          </details>
-        ) : (
-          <div className={buyable.length ? "mt-6 border-t border-line pt-4" : ""}>
-            {buyable.length ? (
-              <>
-                <h3 className="font-semibold">More parts at the shop ({atShop.length})</h3>
-                <p className="text-sm text-muted">Ask on WhatsApp or buy at the shop.</p>
-              </>
-            ) : null}
-            <Rows items={atShop} />
-          </div>
-        )
-      ) : null}
+      <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
+        {items.map((i) => (
+          <li key={i.tile.id} className="flex">
+            {i.node}
+          </li>
+        ))}
+      </ul>
     </section>
-  )
-}
-
-function Rows({ items }: { items: ListingItem[] }) {
-  return (
-    <ul className="divide-y divide-line">
-      {items.map((i) => (
-        <li key={i.tile.id}>{i.row}</li>
-      ))}
-    </ul>
   )
 }
 
@@ -279,26 +235,6 @@ function ChipRail({ chips, sections }: { chips: ChipLink[] | "spy"; sections: { 
         )}
       </ul>
     </nav>
-  )
-}
-
-function ViewToggle() {
-  const stored = useStored("ws-view")
-  const view = stored === "grid" || stored === "list" ? stored : null
-  const choose = (v: "grid" | "list") => {
-    document.documentElement.setAttribute("data-view", v)
-    writeStored("ws-view", v)
-  }
-  const option = (v: "grid" | "list", label: string, icon: ReactNode) => (
-    <button type="button" aria-pressed={view === v} aria-label={label} onClick={() => { choose(v); }} className="flex size-9 items-center justify-center rounded-[6px] transition-colors duration-150 ease-out aria-pressed:bg-ink aria-pressed:text-bg [@media(hover:hover)]:hover:bg-ink/8">
-      {icon}
-    </button>
-  )
-  return (
-    <div role="group" aria-label="View" className="ml-auto flex gap-0.5 rounded-control border border-line-strong bg-surface p-0.5">
-      {option("grid", "Grid view", <LayoutGrid aria-hidden className="size-4" strokeWidth={1.75} />)}
-      {option("list", "List view", <List aria-hidden className="size-4" strokeWidth={1.75} />)}
-    </div>
   )
 }
 

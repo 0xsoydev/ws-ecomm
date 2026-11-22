@@ -18,7 +18,7 @@ export function validQty(priced: Priced, typed: number) {
   return Math.min(top, Math.max(min, Math.ceil(typed / step) * step))
 }
 
-export default function AddButton({ id, priced, name, size }: { id: number; priced: Priced; name: string; size: "tile" | "row" }) {
+export default function AddButton({ id, priced, name, size }: { id: number; priced: Priced; name: string; size: "card" | "row" }) {
   const qty = useCart().find((l) => l.id === id)?.qty ?? 0
   const open = qty > 0
   const min = minQty(priced)
@@ -118,7 +118,7 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
 
   const fade = reduce ? { duration: 0 } : { duration: 0.2, ease: EASE }
   const sideButton =
-    "flex h-full items-center justify-center text-ink outline-none transition-colors duration-150 ease-out [@media(hover:hover)]:hover:bg-ink/8 active:bg-ink/12 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--focus)"
+    "flex h-full items-center justify-center text-current outline-none transition-colors duration-150 ease-out [@media(hover:hover)]:hover:bg-current/10 active:bg-current/15 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current"
 
   const stepper = (
     <m.div
@@ -152,7 +152,7 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
         inputMode="numeric"
         pattern="[0-9]*"
         enterKeyHint="done"
-        className="w-full min-w-0 bg-transparent text-center font-semibold outline-none [appearance:textfield] focus-visible:bg-bg"
+        className="w-full min-w-0 bg-transparent text-center font-semibold text-current outline-none [appearance:textfield] focus-visible:bg-current/10"
         value={draft ?? String(qty)}
         onFocus={(e) => {
           setDraft(String(qty))
@@ -188,21 +188,21 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
       ref={addRef}
       type="button"
       aria-label={`Add ${name} to cart`}
-      className="flex h-full w-full items-center justify-center gap-1.5 rounded-control font-semibold outline-none transition-colors duration-150 ease-out [@media(hover:hover)]:hover:bg-bg active:scale-[0.96] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--focus)"
+      className="flex h-full w-full items-center justify-center gap-1.5 rounded-control font-semibold outline-none transition-[background-color,transform] duration-150 ease-out active:scale-[0.96] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current [@media(hover:hover)]:hover:bg-current/10"
       onClick={add}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={fade}
     >
-      {size === "tile" ? <span>Add</span> : null}
+      {size === "card" ? <span>Add</span> : null}
       <Plus aria-hidden className="size-4" strokeWidth={2} />
     </m.button>
   )
 
   return (
     <m.div
-      className={`relative z-10 h-11 overflow-hidden rounded-control border bg-surface ${open ? "border-ink" : "border-line-strong"} ${size === "tile" ? "w-full" : ""}`}
+      className={`relative z-10 overflow-hidden rounded-control border transition-colors duration-200 ease-out ${size === "card" ? `h-10 w-full border-ink ${open ? "bg-ink text-bg" : "bg-accent text-on-accent"}` : `h-11 bg-surface text-ink ${open ? "border-ink" : "border-line-strong"}`}`}
       initial={false}
       animate={size === "row" ? { width: open ? 112 : 44 } : undefined}
       transition={reduce ? { duration: 0 } : { duration: 0.25, ease: EASE }}

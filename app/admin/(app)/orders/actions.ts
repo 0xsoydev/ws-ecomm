@@ -1,0 +1,137 @@
+"use server"
+
+import { and, eq, sql } from "drizzle-orm"
+import { refresh, updateTag } from "next/cache"
+import { z } from "zod"
+import { requireRole } from "@/lib/auth"
+import { db } from "@/lib/db"
+import { next, type Stage } from "@/lib/orders"
+import { auditLog, orderCharges, orderEvents, orderItems, orders, orderStage, payments, products, shipments, stockMovements } from "@/lib/schema"
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+export type ActionResult = { ok: true } | { ok: false; message: string }
+
+async function locked(tx: Tx, id: number) {
+  const [order] = await tx.select().from(orders).where(eq(orders.id, id)).for("update")
+  if (!order) throw new Error("Order not found")
+  return order
+}
+
+async function move(tx: Tx, id: number, from: Stage, to: Stage, actorId: string, data: Record<string, string | number | boolean | null> = {}) {
+  if (!next[from].includes(to)) throw new Error(`Cannot move from ${from} to ${to}`)
+  const [moved] = await tx
+    .update(orders)
+    .set({ stage: to, updatedAt: new Date(), holdUntil: to === "cancelled" || to === "picked_up" || to === "delivered" || to === "shipped" ? null : sql`${orders.holdUntil}` })
+    .where(and(eq(orders.id, id), eq(orders.stage, from)))
+    .returning({ id: orders.id })
+  if (!moved) throw new Error("The order changed. Refresh and try again.")
+  await tx.insert(orderEvents).values({ orderId: id, type: "stage", actorId, data: { from, to, ...data } })
+}
+
+async function run(work: (tx: Tx, actorId: string) => Promise<number[] | undefined>): Promise<ActionResult> {
+  const session = await requireRole("owner", "staff")
+  try {
+    const touched = await db.transaction((tx) => work(tx, session.user.id))
+    for (const pid of touched ?? []) updateTag(`product:${String(pid)}`)
+    if (touched?.length) updateTag("catalog")
+    refresh()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Something went wrong" }
+  }
+}
+
+const idSchema = z.number().int().positive()
+const stageSchema = z.enum(orderStage.enumValues)
+
+export async function moveStage(raw: unknown) {
+  const v = z.object({ id: idSchema, from: stageSchema, to: z.enum(["packed", "ready_for_pickup", "shipped", "delivered", "picked_up"]) }).parse(raw)
+  return run(async (tx, actor) => {
+    const order = await locked(tx, v.id)
+    if (order.stage !== v.from) throw new Error("The order changed. Refresh and try again.")
+    if ((v.to === "packed" || v.to === "ready_for_pickup") && order.method === "upi_manual" && order.payment !== "paid") throw new Error("Record the UPI payment first.")
+    if (v.to === "picked_up" && order.method === "pay_at_store") {
+      await tx.update(orders).set({ payment: "paid" }).where(eq(orders.id, v.id))
+      await tx.insert(payments).values({ orderId: v.id, provider: "manual", amountPaise: order.totalPaise, status: "captured", method: "at_shop", isTest: order.isTest, verifiedBy: actor })
+      await tx.insert(orderEvents).values({ orderId: v.id, type: "payment", actorId: actor, data: { amount: order.totalPaise, method: "at_shop" } })
+    }
+    await move(tx, v.id, order.stage, v.to, actor)
+    return undefined
+  })
+}
+
+export async function confirmOrder(raw: unknown) {
+  const v = z.object({ id: idSchema, deliveryPaise: z.number().int().min(0).max(10000000).nullable() }).parse(raw)
+  return run(async (tx, actor) => {
+    const order = await locked(tx, v.id)
+    if (order.stage !== "requested" && order.stage !== "quote_pending") throw new Error("Only new orders can be confirmed.")
+    if (order.stage === "quote_pending") {
+      if (v.deliveryPaise === null) throw new Error("Enter the delivery charge.")
+      if (v.deliveryPaise > 0) {
+        await tx.insert(orderCharges).values({ orderId: v.id, kind: "shipping", amountPaise: v.deliveryPaise, gstRateBps: 0, taxablePaise: v.deliveryPaise, taxPaise: 0 })
+        await tx
+          .update(orders)
+          .set({ chargesPaise: sql`${orders.chargesPaise} + ${v.deliveryPaise}`, totalPaise: sql`${orders.totalPaise} + ${v.deliveryPaise}` })
+          .where(eq(orders.id, v.id))
+      }
+    }
+    await move(tx, v.id, order.stage, "confirmed", actor, { delivery: v.deliveryPaise })
+    return undefined
+  })
+}
+
+export async function cancelOrder(raw: unknown) {
+  const v = z.object({ id: idSchema, reason: z.string().trim().min(3, "Give a reason").max(200) }).parse(raw)
+  return run(async (tx, actor) => {
+    const order = await locked(tx, v.id)
+    if (!next[order.stage].includes("cancelled")) throw new Error("This order can no longer be cancelled here.")
+    if (order.payment !== "unpaid" && order.payment !== "pay_at_store") throw new Error("This order has a payment. Refund it first, then cancel.")
+    const lines = await tx.select().from(orderItems).where(and(eq(orderItems.orderId, v.id), eq(orderItems.reserved, true)))
+    const ids = [...new Set(lines.map((l) => l.productId))].sort((a, b) => a - b)
+    for (const pid of ids) await tx.select({ id: products.id }).from(products).where(eq(products.id, pid)).for("update")
+    for (const l of lines) {
+      await tx.update(products).set({ stock: sql`${products.stock} + ${l.qty}` }).where(and(eq(products.id, l.productId), sql`${products.stock} is not null`))
+      await tx.insert(stockMovements).values({ productId: l.productId, delta: l.qty, reason: "order_cancelled", orderId: v.id, actorId: actor })
+    }
+    await move(tx, v.id, order.stage, "cancelled", actor, { reason: v.reason })
+    return ids
+  })
+}
+
+export async function recordUpi(raw: unknown) {
+  const v = z.object({ id: idSchema, utr: z.string().trim().regex(/^\d{12}$/, "A UPI reference has 12 digits"), amountPaise: z.number().int().positive() }).safeParse(raw)
+  if (!v.success) return { ok: false, message: v.error.issues[0]?.message ?? "Check the details" } satisfies ActionResult
+  const { id, utr, amountPaise } = v.data
+  return run(async (tx, actor) => {
+    const order = await locked(tx, id)
+    if (order.method !== "upi_manual") throw new Error("This order is not paid by UPI.")
+    const [{ paid } = { paid: 0 }] = await tx
+      .select({ paid: sql<number>`coalesce(sum(${payments.amountPaise}), 0)::int` })
+      .from(payments)
+      .where(and(eq(payments.orderId, id), eq(payments.status, "captured")))
+    const total = paid + amountPaise
+    if (total > order.totalPaise) throw new Error("That is more than the order total.")
+    await tx.insert(payments).values({ orderId: id, provider: "manual", utr, amountPaise, status: "captured", method: "upi", isTest: order.isTest, verifiedBy: actor })
+    await tx.update(orders).set({ payment: total === order.totalPaise ? "paid" : "partially_paid" }).where(eq(orders.id, id))
+    await tx.insert(orderEvents).values({ orderId: id, type: "payment", actorId: actor, data: { utr, amount: amountPaise } })
+    await tx.insert(auditLog).values({ actorId: actor, entity: "order", entityId: String(id), action: "utr_recorded", diff: { utr: [null, utr], amount: [null, amountPaise] } })
+    return undefined
+  }).then((r) => (r.ok || !/payment_manual_utr/.test(r.message) ? r : { ok: false, message: "This UPI reference was already used." }))
+}
+
+export async function markShipped(raw: unknown) {
+  const v = z
+    .object({ id: idSchema, courier: z.string().trim().min(2, "Enter the courier").max(60), awb: z.string().trim().min(4, "Enter the tracking number").max(40), trackingUrl: z.union([z.literal(""), z.url()]) })
+    .safeParse(raw)
+  if (!v.success) return { ok: false, message: v.error.issues[0]?.message ?? "Check the details" } satisfies ActionResult
+  const { id, courier, awb, trackingUrl } = v.data
+  return run(async (tx, actor) => {
+    const order = await locked(tx, id)
+    if (order.stage !== "packed") throw new Error("Mark the order packed first.")
+    await tx.insert(shipments).values({ orderId: id, courier, awb, trackingUrl: trackingUrl || null, status: "shipped" })
+    await tx.insert(orderEvents).values({ orderId: id, type: "shipment", actorId: actor, data: { courier, awb } })
+    await move(tx, id, "packed", "shipped", actor)
+    return undefined
+  })
+}

@@ -20,7 +20,7 @@ export default async function StoreLayout({ children }: LayoutProps<"/">) {
       <a href="#main" className="sr-only z-50 rounded-control bg-surface px-4 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2">
         Skip to content
       </a>
-      <StoreHeader weekly={info.weeklyHours} special={info.specialHours} scope={info.scope} systems={systems} />
+      <StoreHeader systems={systems} />
       <main id="main">{children}</main>
       <StoreFooter info={info} />
       <Suspense fallback={<BottomBarView pathname={null} systems={systems} />}>

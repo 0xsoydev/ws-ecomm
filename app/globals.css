@@ -173,57 +173,12 @@ input[inputmode="numeric"]::-webkit-inner-spin-button {
   appearance: none;
 }
 
-.header-search {
-  transition-property: opacity, visibility;
-}
-
-html:has(#hero-search):not([data-hero-away]) .header-search {
-  opacity: 0;
-  visibility: hidden;
-}
-
-html:has(#hero-search) [data-scope] {
-  display: none;
-}
-
 :root {
-  --header-h: 85px;
+  --header-h: 55px;
 }
 
 @media (min-width: 1024px) {
   :root {
-    --header-h: 97px;
+    --header-h: 65px;
   }
-}
-
-@media (max-width: 1023px) {
-  html:has(header[data-hidden="true"]) {
-    --header-h: 0px;
-  }
-}
-
-.buy-list {
-  display: none;
-}
-
-@media (max-width: 639px) {
-  .buy-grid {
-    display: none;
-  }
-  .buy-list {
-    display: block;
-  }
-}
-
-html[data-view="grid"] .buy-grid {
-  display: grid;
-}
-
-html[data-view="grid"] .buy-list,
-html[data-view="list"] .buy-grid {
-  display: none;
-}
-
-html[data-view="list"] .buy-list {
-  display: block;
 }

@@ -1,5 +1,5 @@
 import "server-only"
-import { and, asc, eq, isNotNull } from "drizzle-orm"
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
 import { cacheLife, cacheTag } from "next/cache"
 import { isPurchasable } from "./catalog"
 import { db } from "./db"
@@ -23,6 +23,7 @@ export type Tile = {
   unit: string
   priced: Priced
   purchasable: boolean
+  compliant: boolean
   approved: boolean
   stock: StockState
   pickupOnly: boolean
@@ -51,6 +52,7 @@ export async function storeInfo() {
     collectsTax: collectsTax(regime.scheme),
     gstin: isRegistered(regime.scheme) ? regime.gstin : null,
     legalName: s.legalName,
+    minOrderPaise: s.minOrderPaise,
     grievanceOfficer: s.grievanceOfficer,
   }
 }
@@ -78,10 +80,9 @@ export async function catalog() {
       .orderBy(asc(vehicleBrands.name), asc(vehicleModels.name)),
     db.select().from(products).where(eq(products.status, "active")).orderBy(asc(products.sku)),
     db
-      .select({ productId: productImages.productId, publicId: productImages.publicId, width: productImages.width, height: productImages.height, alt: productImages.alt, onWhite: productImages.onWhite, watermarked: productImages.watermarked })
+      .select({ productId: productImages.productId, publicId: productImages.publicId, width: productImages.width, height: productImages.height, alt: productImages.alt, onWhite: productImages.onWhite })
       .from(productImages)
-      .where(eq(productImages.ownPhoto, true))
-      .orderBy(asc(productImages.position)),
+      .orderBy(desc(productImages.ownPhoto), asc(productImages.position)),
     db.select().from(productVehicles),
   ])
   const ctx = { collectsTax: collectsTax(regime.scheme), eprRegistration: settings.eprRegistration, packStandard: settings.certifications.packStandard }
@@ -90,7 +91,7 @@ export async function catalog() {
   const modelById = new Map(modelRows.map((m) => [m.id, m]))
   const firstImage = new Map<number, PublicImage>()
   for (const img of imageRows) {
-    if (img.watermarked || firstImage.has(img.productId)) continue
+    if (firstImage.has(img.productId)) continue
     firstImage.set(img.productId, { publicId: img.publicId, width: img.width, height: img.height, alt: img.alt, onWhite: img.onWhite })
   }
   const fits = new Map<number, { modelId: number; verified: boolean }[]>()
@@ -110,7 +111,8 @@ export async function catalog() {
       name: p.name,
       unit: p.unit,
       priced: { retailPaise: p.retailPaise, wholesalePaise: p.wholesalePaise, moq: p.moq, minOrderQty: p.minOrderQty, orderStep: p.orderStep },
-      purchasable: isPurchasable(p, ctx),
+      purchasable: p.stock !== 0,
+      compliant: isPurchasable(p, ctx),
       approved: p.priceApproved,
       stock: stockState(p.stock, p.lowStockAt ?? settings.lowStockDefault),
       pickupOnly: p.fulfilment === "pickup_or_freight",
@@ -172,8 +174,8 @@ export async function productPage(slug: string) {
     db
       .select({ publicId: productImages.publicId, width: productImages.width, height: productImages.height, alt: productImages.alt, onWhite: productImages.onWhite })
       .from(productImages)
-      .where(and(eq(productImages.productId, tile.id), eq(productImages.ownPhoto, true), eq(productImages.watermarked, false)))
-      .orderBy(asc(productImages.position)),
+      .where(eq(productImages.productId, tile.id))
+      .orderBy(desc(productImages.ownPhoto), asc(productImages.position)),
     storeInfo(),
   ])
   if (!row) return null

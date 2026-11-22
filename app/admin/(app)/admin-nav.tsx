@@ -1,11 +1,12 @@
 "use client"
 
-import { Camera, House, IndianRupee, ListChecks, Package } from "lucide-react"
+import { Camera, House, IndianRupee, ListChecks, Package, ReceiptText } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 const items = [
   { href: "/admin", label: "Home", icon: House },
+  { href: "/admin/orders", label: "Orders", icon: ReceiptText },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/products/pricing", label: "Prices", icon: IndianRupee },
   { href: "/admin/photos", label: "Photos", icon: Camera },
@@ -26,7 +27,7 @@ export function AdminNavView({ pathname }: { pathname: string | null }) {
   return (
     <>
       <nav aria-label="Admin" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
-        <ul className="grid grid-cols-5">
+        <ul className="grid grid-cols-6">
           {items.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href)
             return (

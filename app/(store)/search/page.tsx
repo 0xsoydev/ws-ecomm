@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
 import PageHead from "@/components/PageHead"
-import ProductRow from "@/components/ProductRow"
+import ProductCard from "@/components/ProductCard"
 import { ListingSkeleton } from "@/components/Skeletons"
 import SystemIcon from "@/components/SystemIcon"
 import WhatsAppLink from "@/components/WhatsAppLink"
@@ -17,7 +17,7 @@ const PAGE = 24
 
 export default function SearchPage({ searchParams }: PageProps<"/search">) {
   return (
-    <div className="mx-auto max-w-[800px] px-4 sm:px-6">
+    <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
       <Suspense fallback={<ListingSkeleton />}>
         <Results searchParams={searchParams} />
       </Suspense>
@@ -34,12 +34,6 @@ async function Results({ searchParams }: { searchParams: PageProps<"/search">["s
   return (
     <>
       <PageHead back={{ href: "/", label: "Home" }} title={q ? `Results for ${q}` : "Search parts"}>
-        <form action="/search" role="search" className="mt-2">
-          <label htmlFor="search-q" className="sr-only">
-            Search parts by code, name or vehicle
-          </label>
-          <input id="search-q" name="q" type="search" defaultValue={q} enterKeyHint="search" placeholder="Part code, name or vehicle" className="h-12 w-full rounded-control border border-line-strong bg-surface px-4 text-base" />
-        </form>
         {q ? (
           <p className="text-sm text-muted" aria-live="polite">
             {all.length} {all.length === 1 ? "part" : "parts"}
@@ -66,10 +60,10 @@ async function Results({ searchParams }: { searchParams: PageProps<"/search">["s
           </ul>
         </div>
       ) : null}
-      <ul className="divide-y divide-line">
+      <ul className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
         {all.slice(0, shown).map((t) => (
-          <li key={t.id}>
-            <ProductRow tile={t} />
+          <li key={t.id} className="flex">
+            <ProductCard tile={t} />
           </li>
         ))}
       </ul>

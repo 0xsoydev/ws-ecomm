@@ -12,7 +12,7 @@ import { loadSnapshot, useSnapshot } from "@/lib/snapshot"
 import type { BrowseSystem } from "./BrowsePanel"
 import BrowseSheet from "./BrowseSheet"
 
-const OWN_BOTTOM = ["/p/", "/cart", "/checkout", "/order"]
+const OWN_BOTTOM = ["/p/", "/cart", "/checkout"]
 const EASE = [0.22, 1, 0.36, 1] as const
 
 function CartBar() {
@@ -120,7 +120,7 @@ export function BottomBarView({ pathname, systems }: { pathname: string | null; 
           <li className="flex flex-1">
             <button type="button" onClick={() => { setBrowsing(true); }} className={`${tab} ${state(pathname?.startsWith("/c/") === true || browsing)}`} aria-haspopup="dialog">
               <LayoutGrid aria-hidden className="size-5.5" strokeWidth={1.5} />
-              Browse
+              Categories
             </button>
           </li>
           <li className="flex flex-1">

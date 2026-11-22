@@ -57,22 +57,22 @@ describe("proposeRetailPaise", () => {
 
 describe("priceCopy", () => {
   test("retail with a wholesale break", () => {
-    expect(priceCopy(bulb, "pcs")).toEqual({ main: "₹180 each", sub: "₹160 each from 3" })
+    expect(priceCopy(bulb, "pcs")).toEqual({ main: "₹180 / pc", sub: "₹160 / pc from 3" })
   })
 
-  test("pack-only items lead with the minimum", () => {
-    expect(priceCopy(cellPack, "pcs")).toEqual({ main: "Minimum 100 pcs: ₹9,000", sub: "₹90 each" })
+  test("pack-only items state the minimum", () => {
+    expect(priceCopy(cellPack, "pcs")).toEqual({ main: "₹90 / pc", sub: "Minimum 100 pcs" })
   })
 
-  test("unapproved retail shows the wholesale break and never a retail price", () => {
-    expect(priceCopy(unapprovedRetail, "pcs")).toEqual({ main: "₹26 each from 10 pcs", sub: "Fewer? Ask on WhatsApp" })
+  test("unapproved retail sells at the old price from the break and never invents a retail price", () => {
+    expect(priceCopy(unapprovedRetail, "pcs")).toEqual({ main: "₹26 / pc", sub: "Minimum 10 pcs" })
   })
 
-  test("single price", () => {
-    expect(priceCopy(singlePrice, "set")).toEqual({ main: "₹4,200 each", sub: null })
+  test("single price uses the unit", () => {
+    expect(priceCopy(singlePrice, "set")).toEqual({ main: "₹4,200 / set", sub: null })
   })
 
   test("paise survive", () => {
-    expect(priceCopy({ ...singlePrice, wholesalePaise: 150 }, "pcs").main).toBe("₹1.50 each")
+    expect(priceCopy({ ...singlePrice, wholesalePaise: 150 }, "pcs").main).toBe("₹1.50 / pc")
   })
 })
