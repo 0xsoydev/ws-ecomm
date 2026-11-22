@@ -9,3 +9,6 @@ Code carries no comments, so known ceilings and upgrade paths live here.
 - **`rate_limit` fixed windows**: burst at a window edge accepted.
 - **Library majors**: TypeScript 7 waits for typescript-eslint support (`<6.1.0` today); Drizzle 1.0 waits for a stable release.
 - **`forbidden()`** still needs the experimental `authInterrupts` flag, so `requireRole` redirects instead of returning 403 pages.
+- **Storefront catalogue cache**: `catalog()` in `lib/storefront.ts` loads all active products into one cache entry tagged `catalog`; listings, search, vehicle pages and `/api/catalog-snapshot` filter it in memory. Fine at a few hundred SKUs; split by system once the catalogue passes about 5,000.
+- **Sheet history entries**: `useBackToClose` pushes one history entry per open sheet. Following a link from inside an open sheet leaves that entry behind, so Back returns to the same page once before leaving it.
+- **Phase 3 interaction gaps** (plan `ws-ecomm-phase3-storefront.md`): header search is a native GET form to `/search`, not the typeahead overlay; the desktop cart opens the `/cart` page, not a drawer; cart lines remove through the stepper (bin at the minimum) with Undo, without swipe; the wholesale explainer is static text until a product has an approved retail price to animate; typed quantities use a native numeric input instead of Base UI NumberField.

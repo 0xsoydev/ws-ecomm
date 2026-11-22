@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState, useTransition } from "react"
 import { ISSUES, type Issue } from "@/lib/catalog"
-import { button, chip, field } from "../../../ui"
+import { button, chip, field } from "@/lib/ui"
 import type { ProductRow } from "../load"
 import { Thumb } from "../product-list"
 import { setLegalFields } from "./actions"

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, useTransition, type ReactNode } from "rea
 import { ISSUES, isIndia, purchasableIssues, type PurchasableContext } from "@/lib/catalog"
 import { formatPaise, parseRupees } from "@/lib/format"
 import type { batteryKind, bodyStyle, fulfilment, products, productStatus } from "@/lib/schema"
-import { button, field } from "../../../ui"
+import { button, field } from "@/lib/ui"
 import { saveProduct } from "./actions"
 
 type Product = Omit<typeof products.$inferSelect, "bisVerifiedAt" | "specs"> & { bisVerifiedAt: string | null; specs: Record<string, string> }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest"
-import { BelowMinimum, listingPrice, minQty, nextBreak, OffStep, OverMaximum, proposeRetailPaise, unitPrice, type Priced } from "./pricing"
+import { BelowMinimum, listingPrice, minQty, nextBreak, OffStep, OverMaximum, priceCopy, proposeRetailPaise, unitPrice, type Priced } from "./pricing"
 
 const bulb: Priced = { retailPaise: 18000, wholesalePaise: 16000, moq: 3, minOrderQty: 1, orderStep: 1 }
 const singlePrice: Priced = { retailPaise: null, wholesalePaise: 420000, moq: 1, minOrderQty: 1, orderStep: 1 }
@@ -52,5 +52,27 @@ describe("proposeRetailPaise", () => {
     expect(proposeRetailPaise(16000)).toBe(20000)
     expect(proposeRetailPaise(10500)).toBe(13500)
     expect(proposeRetailPaise(105000)).toBe(131500)
+  })
+})
+
+describe("priceCopy", () => {
+  test("retail with a wholesale break", () => {
+    expect(priceCopy(bulb, "pcs")).toEqual({ main: "₹180 each", sub: "₹160 each from 3" })
+  })
+
+  test("pack-only items lead with the minimum", () => {
+    expect(priceCopy(cellPack, "pcs")).toEqual({ main: "Minimum 100 pcs: ₹9,000", sub: "₹90 each" })
+  })
+
+  test("unapproved retail shows the wholesale break and never a retail price", () => {
+    expect(priceCopy(unapprovedRetail, "pcs")).toEqual({ main: "₹26 each from 10 pcs", sub: "Fewer? Ask on WhatsApp" })
+  })
+
+  test("single price", () => {
+    expect(priceCopy(singlePrice, "set")).toEqual({ main: "₹4,200 each", sub: null })
+  })
+
+  test("paise survive", () => {
+    expect(priceCopy({ ...singlePrice, wholesalePaise: 150 }, "pcs").main).toBe("₹1.50 each")
   })
 })

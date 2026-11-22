@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import { formatPaise } from "@/lib/format"
-import { chip, field } from "../../ui"
+import { chip, field } from "@/lib/ui"
 import type { ProductRow } from "./load"
 
 type Filter = "all" | "buyable" | "blocked" | "out" | "draft"

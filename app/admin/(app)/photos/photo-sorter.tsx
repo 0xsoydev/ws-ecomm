@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useOptimistic, useState, useTransition } from "react"
-import { chip } from "../../ui"
+import { chip } from "@/lib/ui"
 import { classifyPhoto } from "./actions"
 
 type Photo = {

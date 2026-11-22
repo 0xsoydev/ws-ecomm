@@ -4,7 +4,7 @@ import { Check, Search } from "lucide-react"
 import { useMemo, useState, useTransition, type KeyboardEvent } from "react"
 import { formatPaise, parseRupees } from "@/lib/format"
 import { hasRetailTier } from "@/lib/pricing"
-import { button, chip, field } from "../../../ui"
+import { button, chip, field } from "@/lib/ui"
 import { approvePrices } from "./actions"
 
 type Row = {

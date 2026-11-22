@@ -18,6 +18,10 @@
   --danger: #b42318;
   --focus: var(--ink);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --brand-word: #5ace00;
+  --leaf-from: #17de24;
+  --leaf-to: #ffff00;
+  --chrome-b: 0px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -33,6 +37,9 @@
     --signal: #f2b035;
     --danger: #ff7a6b;
     --focus: var(--accent);
+    --brand-word: #90fe3b;
+    --leaf-from: #4dff28;
+    --leaf-to: #ffff5d;
   }
 }
 
@@ -129,4 +136,94 @@
   background-repeat: no-repeat;
   background-size: 10px 1.5px, 1.5px 10px, 10px 1.5px, 1.5px 10px, 10px 1.5px, 1.5px 10px, 10px 1.5px, 1.5px 10px;
   background-position: left top, left top, right top, right top, left bottom, left bottom, right bottom, right bottom;
+}
+
+html:has([data-bar="tab"]) {
+  --chrome-b: calc(56px + env(safe-area-inset-bottom));
+}
+
+html:has([data-bar="tab"]):has([data-bar="cart"]) {
+  --chrome-b: calc(124px + env(safe-area-inset-bottom));
+}
+
+html:has([data-bar="purchase"]),
+html:has([data-bar="send"]) {
+  --chrome-b: calc(76px + env(safe-area-inset-bottom));
+}
+
+html {
+  scroll-padding-bottom: calc(var(--chrome-b) + 16px);
+  scroll-padding-top: 96px;
+}
+
+@media (pointer: coarse) {
+  html:has(:is(input:not([type="checkbox"], [type="radio"]), textarea):focus) [data-bar] {
+    visibility: hidden;
+  }
+}
+
+@media (min-width: 1024px) {
+  html:has([data-bar]):has([data-bar]) {
+    --chrome-b: 0px;
+  }
+}
+
+input[inputmode="numeric"]::-webkit-outer-spin-button,
+input[inputmode="numeric"]::-webkit-inner-spin-button {
+  appearance: none;
+}
+
+.header-search {
+  transition-property: opacity, visibility;
+}
+
+html:has(#hero-search):not([data-hero-away]) .header-search {
+  opacity: 0;
+  visibility: hidden;
+}
+
+html:has(#hero-search) [data-scope] {
+  display: none;
+}
+
+:root {
+  --header-h: 85px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --header-h: 97px;
+  }
+}
+
+@media (max-width: 1023px) {
+  html:has(header[data-hidden="true"]) {
+    --header-h: 0px;
+  }
+}
+
+.buy-list {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .buy-grid {
+    display: none;
+  }
+  .buy-list {
+    display: block;
+  }
+}
+
+html[data-view="grid"] .buy-grid {
+  display: grid;
+}
+
+html[data-view="grid"] .buy-list,
+html[data-view="list"] .buy-grid {
+  display: none;
+}
+
+html[data-view="list"] .buy-list {
+  display: block;
 }
