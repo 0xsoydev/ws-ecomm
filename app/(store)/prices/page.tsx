@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import AddButton from "@/components/AddButton"
 import PageHead from "@/components/PageHead"
 import WhatsAppLink from "@/components/WhatsAppLink"
 import { formatPaise, unitWord } from "@/lib/format"
@@ -70,7 +71,7 @@ export default async function PricesPage() {
                       <span className="text-muted sm:hidden">Minimum </span>
                       {minQty(t.priced)} {unitWord(t.unit, minQty(t.priced))}
                     </td>
-                    <td className="sm:py-3 sm:pr-4">
+                    <td className={`sm:table-cell sm:py-3 sm:pr-4 ${t.priced.retailPaise !== null && hasRetailTier(t.priced) ? "" : "hidden"}`}>
                       <span className="text-muted sm:hidden">Retail </span>
                       {t.priced.retailPaise !== null && hasRetailTier(t.priced) ? formatPaise(t.priced.retailPaise) : "No bulk price"}
                     </td>
@@ -79,11 +80,8 @@ export default async function PricesPage() {
                       {formatPaise(t.priced.wholesalePaise)}
                       {t.priced.moq > 1 ? <span className="font-normal text-muted"> from {t.priced.moq}</span> : null}
                     </td>
-                    <td className="text-muted sm:py-3 sm:pr-4">{stockText(t)}</td>
-                    <td className="sm:py-3">
-                      <span className="text-muted sm:hidden">Buy </span>
-                      {t.purchasable ? "Online" : "At the shop"}
-                    </td>
+                    <td className={`text-muted sm:table-cell sm:py-3 sm:pr-4 ${t.stock.kind === "untracked" ? "hidden" : ""}`}>{stockText(t)}</td>
+                    <td className="col-span-2 sm:py-2">{t.purchasable ? <AddButton id={t.id} priced={t.priced} name={t.name} size="row" /> : <span className="text-sm text-muted">At the shop</span>}</td>
                   </tr>
                 ))}
               </tbody>

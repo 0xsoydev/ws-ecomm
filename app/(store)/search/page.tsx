@@ -7,7 +7,7 @@ import Listing from "@/components/Listing"
 import { ListingSkeleton } from "@/components/Skeletons"
 import SystemIcon from "@/components/SystemIcon"
 import WhatsAppLink from "@/components/WhatsAppLink"
-import { EXACT, searchScored, shortcuts } from "@/lib/search"
+import { CLOSE, EXACT, interpreted, searchScored, shortcuts } from "@/lib/search"
 import { catalog } from "@/lib/storefront"
 import { button } from "@/lib/ui"
 import { photoHelp } from "@/lib/whatsapp"
@@ -36,9 +36,14 @@ async function Results({ searchParams }: { searchParams: PageProps<"/search">["s
   const exact = scored.filter((r) => r.s >= EXACT).map((r) => r.item)
   const groups = exact.length && exact.length < all.length ? [{ slug: "exact", name: "Exact match", tiles: exact }, { slug: "similar", name: "Similar parts", tiles: all.filter((t) => !exact.includes(t)) }] : [{ slug: "results", name: `Parts matching ${q}`, tiles: all }]
   const jumps = q ? shortcuts(data, q) : []
+  const reading = q ? interpreted(q) : null
+  const loose = scored.length > 0 && (scored[0]?.s ?? 0) < CLOSE
   return (
     <>
-      <PageHead back={{ href: "/", label: "Home" }} title={q ? `Results for ${q}` : "Search parts"} />
+      <PageHead back={{ href: "/", label: "Home" }} title={q ? `Results for ${q}` : "Search parts"}>
+        {reading ? <p className="text-sm text-muted">Showing results for &lsquo;{reading}&rsquo;</p> : null}
+        {loose ? <p className="text-sm text-muted">No part matches every word. These are the closest.</p> : null}
+      </PageHead>
       {jumps.length ? (
         <ul aria-label="Matching vehicles and categories" className="mt-1 flex flex-wrap gap-2">
           {jumps.map((j) => (

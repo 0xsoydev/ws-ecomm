@@ -12,7 +12,7 @@ import { partsCount } from "@/lib/format"
 
 export type ListingItem = { tile: Filterable & { id: number }; node: ReactNode }
 export type ListingSection = { slug: string; name: string; href?: string; items: ListingItem[] }
-export type VehicleOption = { key: string; id: number; label: string }
+export type VehicleOption = { key: string; id: number; label: string; href: string }
 export type ChipLink = { href: string; label: string; active: boolean }
 
 const Sheet = dynamic(() => import("./Sheet"), { ssr: false })
@@ -161,7 +161,7 @@ export function ListingView({
             {partsCount(counts.total)}
           </p>
         </div>
-        <VehicleOffer vehicles={vehicles} current={vehicle} apply={(key) => { set({ vehicle: key }); }} />
+        {showVehicleFacet ? <VehicleOffer vehicles={vehicles} current={vehicle} apply={(key) => { set({ vehicle: key }); }} /> : null}
         {active.length ? (
           <ul className="flex flex-wrap gap-2 pb-3">
             {active.map((a) => (
@@ -290,14 +290,15 @@ function ChipRail({ chips, sections }: { chips: ChipLink[] | "spy"; sections: { 
 
 function VehicleOffer({ vehicles, current, apply }: { vehicles: VehicleOption[]; current: VehicleOption | null; apply: (key: string) => void }) {
   const key = useStored("ws-vehicle")
+  const dismissed = useStored("ws-vehicle-offer-off")
   const offer = vehicles.find((v) => v.key === key) ?? null
-  if (!offer || current) return null
+  if (!offer || current || dismissed === offer.key) return null
   return (
     <div className="flex items-center gap-1 pb-3">
       <button type="button" onClick={() => { apply(offer.key); }} className={`${chip(false)} h-9`}>
         Filter for {offer.label}?
       </button>
-      <button type="button" aria-label="Dismiss" onClick={() => { writeStored("ws-vehicle", null); }} className={button.icon}>
+      <button type="button" aria-label="Dismiss" onClick={() => { writeStored("ws-vehicle-offer-off", offer.key); }} className={button.icon}>
         <X aria-hidden className="size-4" strokeWidth={1.75} />
       </button>
     </div>

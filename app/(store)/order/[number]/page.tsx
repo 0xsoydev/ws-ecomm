@@ -4,13 +4,14 @@ import { Check, Phone } from "lucide-react"
 import type { Metadata } from "next"
 import { cookies } from "next/headers"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { connection } from "next/server"
 import { Suspense } from "react"
 import Placeholder from "@/components/Placeholder"
 import ProductImage from "@/components/ProductImage"
 import { ProductSkeleton } from "@/components/Skeletons"
 import WhatsAppIcon from "@/components/WhatsAppIcon"
+import { getAdminSession, rolesOf } from "@/lib/auth"
 import { BUSINESS } from "@/lib/business"
 import { db } from "@/lib/db"
 import { publicEnv } from "@/lib/env.public"
@@ -52,6 +53,8 @@ async function Content({ params }: { params: PageProps<"/order/[number]">["param
   const [order] = await db.select().from(orders).where(eq(orders.id, id))
   if (!order) notFound()
   if (!matches(jar.get(`ws_order_${String(id)}`)?.value, order.cookieHash)) {
+    const staff = await getAdminSession()
+    if (staff && rolesOf(staff.user.role).some((r) => r === "owner" || r === "staff")) redirect(`/admin/orders/${String(id)}`)
     return (
       <div className="flex flex-col items-start gap-4 py-12">
         <h1 className="text-2xl">Order {orderNumber(id)}</h1>

@@ -30,7 +30,8 @@ export default async function Home() {
   const rails = [...data.systems]
     .filter((s) => s.count > 0)
     .sort((a, b) => Number(b.slug === FLAGSHIP) - Number(a.slug === FLAGSHIP) || b.count - a.count)
-  const brands = [...new Map(data.models.map((m) => [m.brandSlug, m.brandName])).entries()]
+  const brandParts = (slug: string) => data.tiles.filter((t) => t.vehicles.some((v) => data.models.some((m) => m.id === v.modelId && m.brandSlug === slug))).length
+  const brands = [...new Map(data.models.map((m) => [m.brandSlug, m.brandName])).entries()].sort((a, b) => brandParts(b[0]) - brandParts(a[0]) || a[1].localeCompare(b[1]))
 
   return (
     <>
@@ -82,11 +83,13 @@ export default async function Home() {
       </section>
 
       <section aria-labelledby="vehicles" className="mx-auto mt-6 max-w-[1200px] sm:px-6">
-        <h2 id="vehicles" className="px-4 text-sm font-semibold sm:px-0">
-          Shop by scooter
-        </h2>
+        <div className="flex min-h-11 items-center justify-between gap-3 px-4 sm:px-0">
+          <h2 id="vehicles" className="text-sm font-semibold">
+            Shop by scooter
+          </h2>
+          <YourVehicle options={vehicleOptions(data.models)} />
+        </div>
         <ul className="mt-2 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-0">
-          <YourVehicle options={vehicleOptions(data.models).map((v, i) => ({ key: v.key, label: v.label, href: `/v/${data.models[i]?.brandSlug ?? ""}/${data.models[i]?.slug ?? ""}` }))} />
           {brands.map(([slug, name]) => (
             <li key={slug} className="snap-start">
               <Link
@@ -112,7 +115,7 @@ export default async function Home() {
             <h2 id={`rail-${s.slug}`} className="text-xl">
               {s.name}
             </h2>
-            <Link href={`/c/${s.slug}`} className="flex shrink-0 items-center gap-0.5 text-sm font-medium no-underline [@media(hover:hover)]:hover:underline">
+            <Link href={`/c/${s.slug}`} className="flex min-h-11 shrink-0 items-center gap-0.5 text-sm font-medium no-underline [@media(hover:hover)]:hover:underline">
               See all {s.count}
               <ChevronRight aria-hidden className="size-4" strokeWidth={2} />
             </Link>

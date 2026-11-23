@@ -23,6 +23,15 @@ export type Filterable = {
 export const FACET_KEYS = ["Maker", "Series cells", "Voltage", "Current", "Position"] as const
 export const facetKey = (key: string, value: string) => `${key}=${value}`
 
+const VOLTS = [12, 24, 36, 48, 60, 64, 72, 84, 96]
+
+export function facetValues(key: string, value: string): string[] {
+  if (key !== "Voltage") return [value]
+  const nums = [...value.matchAll(/(\d+)\s*v?/gi)].map((m) => Number(m[1])).filter((n) => n >= 12 && n <= 120)
+  const range = /\d\s*v?\s*-\s*\d/i.test(value) && nums.length === 2 ? VOLTS.filter((v) => v >= (nums[0] ?? 0) && v <= (nums[1] ?? 0)) : nums
+  return range.length ? [...new Set(range)].map((n) => `${String(n)}V`) : [value]
+}
+
 export type ListingFilter = { vehicle: number | null; body: BodyStyle | null; stock: boolean; specs: readonly string[]; sort: Sort }
 
 export function matches(t: Filterable, f: Omit<ListingFilter, "sort">) {

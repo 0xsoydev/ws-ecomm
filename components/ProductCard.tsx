@@ -33,7 +33,7 @@ export default function ProductCard({ tile, sizes = CARD_SIZES }: { tile: Tile; 
         </h3>
         <p className="mt-auto flex flex-col leading-tight">
           <span className="font-semibold">{copy.main}</span>
-          <span className="min-h-[1lh] text-xs text-muted">{copy.sub}</span>
+          <span className="min-h-[1lh] text-sm text-muted">{copy.sub}</span>
         </p>
         {tile.purchasable ? (
           <AddButton id={tile.id} priced={tile.priced} name={tile.name} size="card" />

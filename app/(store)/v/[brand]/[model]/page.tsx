@@ -24,7 +24,8 @@ async function load(brand: string, model: string) {
   if (!option) return null
   const tiles = vehicleTiles(data, [m.id])
   const verified = tiles.filter((t) => t.vehicles.some((v) => v.modelId === m.id && v.verified))
-  return { data, m, option, tiles, verified, rest: tiles.filter((t) => !verified.includes(t)) }
+  const kinds = [...new Set(tiles.map((t) => data.categories.find((c) => c.id === t.categoryId)?.name.toLowerCase()).filter((x) => x !== undefined))].slice(0, 4)
+  return { data, m, option, tiles, verified, kinds, rest: tiles.filter((t) => !verified.includes(t)) }
 }
 
 export async function generateMetadata({ params }: PageProps<"/v/[brand]/[model]">): Promise<Metadata> {
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: PageProps<"/v/[brand]/[model]
   if (!found) return { title: "Page not found" }
   return {
     title: `${found.option.label} spare parts in Mumbai`,
-    description: `${partsCount(found.tiles.length)} for the ${found.option.label}: brake pads, levers, lights and electricals with counter prices at Gulab Auto Garage, Malad West, Mumbai.`,
+    description: `${partsCount(found.tiles.length)} for the ${found.option.label}${found.kinds.length ? `: ${found.kinds.join(", ")}` : ""}, with counter prices at Gulab Auto Garage, Malad West, Mumbai.`,
     alternates: { canonical: `/v/${p.brand}/${p.model}` },
     robots: found.tiles.length >= VEHICLE_INDEX_MIN ? undefined : { index: false, follow: true },
   }

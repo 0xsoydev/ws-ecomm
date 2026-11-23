@@ -39,3 +39,13 @@ test("tampered or broken storage is ignored", async () => {
     expect(qtyOf(1)).toBe(0)
   }
 })
+
+test("a clear made by checkout is marked quiet so the cart offers no Undo", async () => {
+  const { setQty, clearCart, lastChangeWasQuiet } = await cart()
+  setQty(1, 1)
+  expect(lastChangeWasQuiet()).toBe(false)
+  clearCart(true)
+  expect(lastChangeWasQuiet()).toBe(true)
+  setQty(2, 1)
+  expect(lastChangeWasQuiet()).toBe(false)
+})

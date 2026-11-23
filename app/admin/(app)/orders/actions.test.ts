@@ -31,8 +31,8 @@ beforeAll(async () => {
   sql = async (q) => (await db.execute(raw.raw(q))).rows
   let n = 0
   place = async (lines, payment = "upi_manual", delivery = "pickup") => {
-    const address = delivery === "ship" ? { line1: "12 Shanti Nagar", city: "Mumbai", pincode: "400064" } : { line1: "", city: "", pincode: "" }
-    const r = await placeOrder({ idempotencyKey: randomUUID(), name: "Ravi Kumar", phone: `97${String(30000000 + n++)}`, email: "", delivery, ...address, line2: "", landmark: "", payment, note: "", whatsappUpdates: false, lines })
+    const address = delivery === "ship" ? { line1: "12 Shanti Nagar", line2: "Marve Road", city: "Mumbai", pincode: "400064" } : { line1: "", line2: "", city: "", pincode: "" }
+    const r = await placeOrder({ idempotencyKey: randomUUID(), name: "Ravi Kumar", phone: `97${String(30000000 + n++)}`, email: "", delivery, ...address, landmark: "", payment, note: "", whatsappUpdates: false, lines })
     if (!r.ok) throw new Error(JSON.stringify(r))
     return Number(r.number.slice(2))
   }
@@ -75,7 +75,7 @@ test("a pickup order cannot be packed or shipped, a courier order cannot be mark
 
 test("a courier order above the bands waits for a delivery charge, which confirming adds to the total", async () => {
   const { placeOrder } = await import("@/app/(store)/checkout/actions")
-  const r = await placeOrder({ idempotencyKey: randomUUID(), name: "Ravi Kumar", phone: "9700099999", email: "", delivery: "ship", line1: "12 Shanti Nagar", line2: "", landmark: "", city: "Mumbai", pincode: "400064", payment: "upi_manual", note: "", whatsappUpdates: false, lines: [{ id: 1, qty: 4, unitPaise: 110000 }] })
+  const r = await placeOrder({ idempotencyKey: randomUUID(), name: "Ravi Kumar", phone: "9700099999", email: "", delivery: "ship", line1: "12 Shanti Nagar", line2: "Marve Road", landmark: "", city: "Mumbai", pincode: "400064", payment: "upi_manual", note: "", whatsappUpdates: false, lines: [{ id: 1, qty: 4, unitPaise: 110000 }] })
   if (!r.ok) throw new Error(JSON.stringify(r))
   const id = Number(r.number.slice(2))
   expect(await actions.confirmOrder({ id, deliveryPaise: null })).toMatchObject({ ok: false, message: "Enter the delivery charge." })

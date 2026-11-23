@@ -8,6 +8,7 @@ const KEY = "ws-cart-v1"
 const listeners = new Set<() => void>()
 const none: CartLine[] = []
 let lines: CartLine[] | null = null
+let quiet = false
 
 function isLines(v: unknown): v is CartLine[] {
   return (
@@ -28,8 +29,9 @@ function load(): CartLine[] {
   return lines
 }
 
-function save(next: CartLine[]) {
+function save(next: CartLine[], silent = false) {
   lines = next
+  quiet = silent
   try {
     localStorage.setItem(KEY, JSON.stringify(next))
   } catch {
@@ -44,6 +46,7 @@ function subscribe(fn: () => void) {
   const onStorage = (e: StorageEvent) => {
     if (e.key !== KEY) return
     lines = null
+    quiet = true
     fn()
   }
   window.addEventListener("storage", onStorage)
@@ -74,10 +77,14 @@ export function setQty(id: number, qty: number) {
   save(current.some((l) => l.id === id) ? current.map((l) => (l.id === id ? { id, qty } : l)) : [...current, { id, qty }])
 }
 
-export function clearCart() {
+export function clearCart(silent = false) {
   const previous = load()
-  save([])
+  save([], silent)
   return previous
+}
+
+export function lastChangeWasQuiet() {
+  return quiet
 }
 
 export function restoreCart(previous: CartLine[]) {

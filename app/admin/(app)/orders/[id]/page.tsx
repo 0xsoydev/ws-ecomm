@@ -18,6 +18,9 @@ export const metadata: Metadata = { title: "Order" }
 
 const METHOD: Record<string, string> = { pay_at_store: "Pay at the shop", upi_manual: "UPI after confirmation" }
 
+const STAGE_TEXT: Record<string, string> = STAGE_LABEL
+const EVENT_LABEL: Record<string, string> = { placed: "Order placed", payment: "Payment recorded", shipment: "Shipped" }
+
 export default function OrderPage({ params }: PageProps<"/admin/orders/[id]">) {
   return (
     <div className="mx-auto flex max-w-[900px] flex-col gap-5">
@@ -50,8 +53,11 @@ async function Detail({ params }: { params: PageProps<"/admin/orders/[id]">["par
   const num = orderNumber(id)
   const received = paid.filter((p) => p.status === "captured").reduce((s, p) => s + p.amountPaise, 0)
   const upi = settings.upiVpa ?? "[our UPI ID]"
-  const confirmText =
-    order.delivery === "pickup"
+  const confirming = order.stage === "requested" || order.stage === "quote_pending" || order.stage === "confirmed" || order.stage === "pending_payment"
+  const updateText = `Hi ${contact?.name ?? ""}, an update on your order ${num}: ${STAGE_LABEL[order.stage].toLowerCase()}.${order.stage === "ready_for_pickup" ? " Pick it up at Gulab Auto Garage, near Milap Theatre, S.V. Road, Malad West, 9 am to 10 pm." : ""}`
+  const confirmText = !confirming
+    ? updateText
+    : order.delivery === "pickup"
       ? `Hi ${contact?.name ?? ""}, your order ${num} is confirmed. Total ${formatPaise(order.totalPaise)}. ${order.method === "upi_manual" ? `Pay by UPI to ${upi} with the note ${num}, then send the 12-digit UTR here. ` : ""}Pick it up at Gulab Auto Garage, near Milap Theatre, S.V. Road, Malad West, 9 am to 10 pm.`
       : `Hi ${contact?.name ?? ""}, your order ${num} is confirmed. Total with delivery ${formatPaise(order.totalPaise)}. Pay by UPI to ${upi} with the note ${num}, then send the 12-digit UTR here. We ship once the payment is in.`
 
@@ -77,7 +83,7 @@ async function Detail({ params }: { params: PageProps<"/admin/orders/[id]">["par
               <>
                 <a href={`https://wa.me/91${contact.phone}?text=${encodeURIComponent(confirmText)}`} target="_blank" rel="noopener" className={`${button.secondary} no-underline`}>
                   <WhatsAppIcon className="size-4.5" />
-                  Send confirmation
+                  {confirming ? "Send confirmation" : "Send update"}
                 </a>
                 <a href={`tel:+91${contact.phone}`} className={`${button.secondary} no-underline`}>
                   <Phone aria-hidden className="size-4.5" strokeWidth={1.75} />
@@ -171,8 +177,7 @@ async function Detail({ params }: { params: PageProps<"/admin/orders/[id]">["par
           <ol className="flex flex-col gap-1 text-sm text-muted">
             {events.map((e) => (
               <li key={e.id}>
-                {e.at.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}: {e.type}
-                {typeof e.data.to === "string" ? ` to ${e.data.to.replace(/_/g, " ")}` : ""}
+                {e.at.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })}: {e.type === "stage" && typeof e.data.to === "string" ? (STAGE_TEXT[e.data.to] ?? e.data.to) : (EVENT_LABEL[e.type] ?? e.type)}
                 {typeof e.data.reason === "string" ? `, ${e.data.reason}` : ""}
               </li>
             ))}

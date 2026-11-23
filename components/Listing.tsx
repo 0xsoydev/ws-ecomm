@@ -4,7 +4,7 @@ import ListingClient, { ListingView, type ChipLink, type ListingSection, type Ve
 import ProductCard from "./ProductCard"
 
 export function vehicleOptions(models: Catalog["models"]): VehicleOption[] {
-  return models.map((m) => ({ key: `${m.brandSlug}-${m.slug}`, id: m.id, label: m.name.toLowerCase().startsWith(m.brandName.toLowerCase()) ? m.name : `${m.brandName} ${m.name}` }))
+  return models.map((m) => ({ key: `${m.brandSlug}-${m.slug}`, id: m.id, href: `/v/${m.brandSlug}/${m.slug}`, label: m.name.toLowerCase().startsWith(m.brandName.toLowerCase()) ? m.name : `${m.brandName} ${m.name}` }))
 }
 
 export default function Listing({ groups, models, chips, showVehicleFacet = true }: { groups: { slug: string; name: string; href?: string; tiles: Tile[] }[]; models: Catalog["models"]; chips: ChipLink[] | "spy"; showVehicleFacet?: boolean }) {

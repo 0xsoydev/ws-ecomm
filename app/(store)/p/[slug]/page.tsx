@@ -14,6 +14,7 @@ import { RETURNS } from "@/lib/business"
 import { isIndia } from "@/lib/catalog"
 import { publicEnv } from "@/lib/env.public"
 import { formatPaise, unitWord } from "@/lib/format"
+import { feeSummary } from "@/lib/delivery"
 import { breadcrumbs, jsonLd, productNode } from "@/lib/jsonld"
 import { codeMissing } from "@/lib/search"
 import { hasRetailTier, minQty, priceCopy } from "@/lib/pricing"
@@ -36,7 +37,7 @@ export async function generateMetadata({ params }: PageProps<"/p/[slug]">): Prom
   const base = codeMissing(tile.name, tile.code) ? `${tile.name} ${tile.code}` : tile.name
   const vehicle = page.fits[0]?.label
   const title = page.seo.title ?? `${base}${vehicle && !base.toLowerCase().includes(vehicle.toLowerCase()) ? ` for ${vehicle}` : ""}, ${priceCopy(tile.priced, tile.unit).main} | WS Green Mumbai`
-  const description = page.seo.description ?? `${priceCopy(tile.priced, tile.unit).main}. ${summaryOf(page)}`.slice(0, 300)
+  const description = page.seo.description ?? clip(`${priceCopy(tile.priced, tile.unit).main}. ${page.description || summaryOf(page)}`, 158)
   const image = page.images[0]
   const og = image ? `https://res.cloudinary.com/${publicEnv.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/f_jpg,q_auto,w_1200,h_630,c_pad,b_white/${image.publicId}` : undefined
   return {
@@ -58,6 +59,12 @@ export default function ProductRoute({ params }: PageProps<"/p/[slug]">) {
   )
 }
 
+function clip(text: string, max: number) {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max)
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 0)).replace(/[,;:.\s]+$/, "")}...`
+}
+
 function factsOf(page: ProductPage) {
   const { tile } = page
   const facts: [string, string][] = []
@@ -77,7 +84,7 @@ function summaryOf(page: ProductPage) {
   const fits = page.fits.map((f) => f.label)
   const parts = [
     `${tile.name}${codeMissing(tile.name, tile.code) ? ` (part code ${tile.code})` : ""} is in our ${page.category.name} range for electric two-wheelers.`,
-    page.maker ? `Made by ${page.maker}.` : null,
+    page.maker ? `Made by ${page.maker.replace(/\.+$/, "")}.` : null,
     fits.length ? `Sold for the ${fits.join(", ")}. Check it against your old part, or send us a photo on WhatsApp before ordering.` : "Check it against your old part, or send us a photo on WhatsApp before ordering.",
     `Sold per ${unitWord(tile.unit, 1)}${min > 1 ? `, minimum ${String(min)} ${unitWord(tile.unit, min)} per order` : ""}.`,
     tile.priced.retailPaise !== null && hasRetailTier(tile.priced) ? `Buy ${String(tile.priced.moq)} or more and every piece is charged at the wholesale price.` : null,
@@ -87,8 +94,12 @@ function summaryOf(page: ProductPage) {
 }
 
 async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] }) {
-  const page = await productPage((await params).slug)
-  if (!page) notFound()
+  const { slug } = await params
+  const page = await productPage(slug)
+  if (!page) {
+    if (slug !== slug.toLowerCase()) permanentRedirect(`/p/${slug.toLowerCase()}`)
+    notFound()
+  }
   if ("redirect" in page) permanentRedirect(`/p/${page.redirect}`)
   const { tile, legal, info } = page
   const url = `${publicEnv.NEXT_PUBLIC_SITE_URL}/p/${tile.slug}`
@@ -124,7 +135,8 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
       }),
     )
   }
-  const delivery = tile.pickupOnly ? "Lithium parts can't go by courier. Pick up in Malad West, or ask for a freight quote." : info.pickupOnly ? "Pick up at the shop in Malad West." : `${info.scope}, or pick up in Malad West.`
+  const fees = feeSummary(info)
+  const delivery = tile.pickupOnly ? "Lithium parts can't go by courier. Pick up in Malad West, or ask for a freight quote." : info.pickupOnly ? "Pick up at the shop in Malad West." : `${info.scope}${fees ? ` (${fees})` : ""}, or free pickup in Malad West.`
 
   return (
     <>
@@ -147,7 +159,7 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
       </nav>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
-        <div className="lg:sticky lg:top-[calc(var(--header-h)+24px)] lg:self-start">
+        <div className="lg:col-start-1 lg:row-start-1">
           {page.images.length ? (
             <Gallery images={page.images} alt={tile.name} />
           ) : (
@@ -157,7 +169,7 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
           )}
         </div>
 
-        <div className="flex min-w-0 flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-[calc(var(--header-h)+24px)] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
           <div className="flex flex-col gap-2">
             {tile.code || page.maker ? (
               <p className="flex flex-wrap gap-x-4 text-sm text-muted">
@@ -254,6 +266,9 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
             </li>
           </ul>
 
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-2">
           <section aria-labelledby="facts" className={section}>
             <h2 id="facts" className="text-lg">
               Details

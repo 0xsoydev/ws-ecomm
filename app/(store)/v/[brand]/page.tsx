@@ -56,9 +56,9 @@ async function Content({ params }: { params: PageProps<"/v/[brand]">["params"] }
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd([breadcrumbs([{ name: "Vehicles", path: "/v" }, { name, path: `/v/${brand}` }]), itemList(`${name} parts`, tiles)])} />
       <PageHead back={{ href: "/v", label: "Vehicles" }} title={`${name} parts`}>
         <ul aria-label={`${name} models`} className="flex flex-wrap gap-2">
-          {vehicleOptions(models).map((v, i) => (
+          {vehicleOptions(models).map((v) => (
             <li key={v.key}>
-              <Link href={`/v/${brand}/${models[i]?.slug ?? ""}`} className={`${chip(false)} h-11 no-underline`}>
+              <Link href={v.href as `/v/${string}`} className={`${chip(false)} h-11 no-underline`}>
                 {v.label}
               </Link>
             </li>

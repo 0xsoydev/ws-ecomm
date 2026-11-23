@@ -3,6 +3,7 @@
 import { createHash, createHmac } from "node:crypto"
 import { and, count, eq, gt, inArray, sql } from "drizzle-orm"
 import { cookies, headers } from "next/headers"
+import { ipAddress } from "@vercel/functions"
 import { after } from "next/server"
 import { z } from "zod"
 import { BUSINESS } from "@/lib/business"
@@ -43,6 +44,7 @@ const input = z
   .superRefine((v, ctx) => {
     if (v.delivery !== "ship") return
     if (v.line1.length < 3) ctx.addIssue({ code: "custom", path: ["line1"], message: "Enter the flat or house and building" })
+    if (v.line2.length < 3) ctx.addIssue({ code: "custom", path: ["line2"], message: "Enter the area and street" })
     if (v.city.length < 2) ctx.addIssue({ code: "custom", path: ["city"], message: "Enter the city" })
     if (!isMaharashtraPincode(v.pincode)) ctx.addIssue({ code: "custom", path: ["pincode"], message: "We deliver within Maharashtra only. Enter a pincode starting 40 to 44" })
     if (v.payment !== "upi_manual") ctx.addIssue({ code: "custom", path: ["payment"], message: "Courier orders are paid by UPI" })
@@ -56,6 +58,7 @@ export type CheckoutResult =
   | { ok: false; kind: "price"; changed: { id: number; unitPaise: number }[] }
   | { ok: false; kind: "stock"; ids: number[] }
   | { ok: false; kind: "message"; message: string }
+  | { ok: false; kind: "placed"; number: string }
 
 class Refusal extends Error {
   constructor(readonly result: CheckoutResult) {
@@ -74,19 +77,19 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
   }
   const v = parsed.data
   const h = await headers()
-  const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null
+  const ip = ipAddress({ headers: h }) ?? null
   const phoneHash = createHmac("sha256", env.PHONE_PEPPER).update(v.phone).digest("hex")
   const requestHash = createHash("sha256").update(JSON.stringify({ ...v, idempotencyKey: undefined })).digest("hex")
 
   const secret = createHmac("sha256", env.BETTER_AUTH_SECRET).update(`order:${v.idempotencyKey}`).digest("base64url")
-  const opened = async (id: number): Promise<CheckoutResult> => {
+  const opened = async (id: number, hash = requestHash): Promise<CheckoutResult> => {
     const jar = await cookies()
     jar.set(`ws_order_${String(id)}`, secret, { httpOnly: true, sameSite: "lax", secure: env.NODE_ENV === "production", path: `/order/${orderNumber(id)}`, maxAge: 30 * 24 * 3600 })
-    return { ok: true, number: orderNumber(id) }
+    return hash === requestHash ? { ok: true, number: orderNumber(id) } : { ok: false, kind: "placed", number: orderNumber(id) }
   }
 
-  const [existing] = await db.select({ id: orders.id }).from(orders).where(eq(orders.idempotencyKey, v.idempotencyKey))
-  if (existing) return opened(existing.id)
+  const [existing] = await db.select({ id: orders.id, requestHash: orders.requestHash }).from(orders).where(eq(orders.idempotencyKey, v.idempotencyKey))
+  if (existing) return opened(existing.id, existing.requestHash)
 
   const [[recent], ipOk] = await Promise.all([
     db
@@ -228,8 +231,8 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
   } catch (e) {
     if (e instanceof Refusal) return e.result
     if (violated(e) === "orders_idempotencyKey_unique") {
-      const [again] = await db.select({ id: orders.id }).from(orders).where(eq(orders.idempotencyKey, v.idempotencyKey))
-      if (again) return opened(again.id)
+      const [again] = await db.select({ id: orders.id, requestHash: orders.requestHash }).from(orders).where(eq(orders.idempotencyKey, v.idempotencyKey))
+      if (again) return opened(again.id, again.requestHash)
     }
     throw e
   }

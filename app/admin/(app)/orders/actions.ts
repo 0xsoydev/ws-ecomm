@@ -138,7 +138,7 @@ export async function recordUpi(raw: unknown) {
 }
 
 export async function markShipped(raw: unknown) {
-  const schema = z.object({ id: idSchema, courier: z.string().trim().min(2, "Enter the courier").max(60), awb: z.string().trim().min(4, "Enter the tracking number").max(40), trackingUrl: z.union([z.literal(""), z.url()]) })
+  const schema = z.object({ id: idSchema, courier: z.string().trim().min(2, "Enter the courier").max(60), awb: z.string().trim().min(4, "Enter the tracking number").max(40), trackingUrl: z.union([z.literal(""), z.url({ protocol: /^https$/, error: "Use an https:// tracking link" })]) })
   return run(schema, raw, async (tx, actor, { id, courier, awb, trackingUrl }) => {
     const order = await locked(tx, id)
     if (order.delivery === "pickup") throw new Error("This order is picked up at the shop.")

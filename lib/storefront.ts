@@ -2,7 +2,7 @@ import "server-only"
 import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
 import { cacheLife, cacheTag } from "next/cache"
 import { isPurchasable } from "./catalog"
-import { FACET_KEYS } from "./listing"
+import { FACET_KEYS, facetValues } from "./listing"
 import { db } from "./db"
 import { deliveryScope } from "./delivery"
 import { env } from "./env"
@@ -127,7 +127,7 @@ export async function catalog() {
       systemSlug: system.slug,
       bodyStyle: p.bodyStyle,
       vehicles,
-      facets: p.specsReviewed ? FACET_KEYS.flatMap((k) => (p.specs[k] ? [[k, p.specs[k]] as [string, string]] : [])) : [],
+      facets: p.specsReviewed ? FACET_KEYS.flatMap((k) => facetValues(k, p.specs[k] ?? "").filter(Boolean).map((v): [string, string] => [k, v])) : [],
       terms: searchTerms([
         p.partCode,
         p.mpn,
@@ -140,7 +140,7 @@ export async function catalog() {
         }),
         ...reviewedSpecs,
       ]),
-      context: searchTerms([category.name, system.name, system.shortName]),
+      context: searchTerms([category.name]),
     })
   }
 

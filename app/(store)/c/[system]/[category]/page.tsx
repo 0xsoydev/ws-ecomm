@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: PageProps<"/c/[system]/[categ
   if (!found) return { title: "Page not found" }
   return {
     title: `${found.category.name} for electric scooters in Mumbai`,
-    description: `${found.category.name}: ${String(found.category.count)} parts with counter prices at Gulab Auto Garage, Malad West, Mumbai.`,
+    description: found.category.blurb || `${found.category.name}: ${String(found.category.count)} parts with counter prices at Gulab Auto Garage, Malad West, Mumbai.`,
     alternates: { canonical: `/c/${found.system.slug}/${found.category.slug}` },
   }
 }

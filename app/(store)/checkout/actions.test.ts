@@ -69,12 +69,12 @@ test("a bad GSTIN is refused on its field", async () => {
   expect(await placeOrder(order({ gstin: "27ABC" }))).toMatchObject({ ok: false, kind: "fields", fields: { gstin: expect.any(String) as string } })
 })
 
-test("a retry with the same key returns the same order and sets the same order cookie again", async () => {
+test("a retry with the same key reopens the same order; an edited retry is told the order was already placed", async () => {
   const input = order()
   setCookies.length = 0
   const first = await placeOrder(input)
   expect(await placeOrder(input)).toEqual(first)
-  expect(await placeOrder({ ...input, note: "edited after a lost reply" })).toEqual(first)
+  expect(await placeOrder({ ...input, note: "edited after a lost reply" })).toEqual({ ok: false, kind: "placed", number: first.ok ? first.number : "" })
   expect(setCookies).toHaveLength(3)
   expect(new Set(setCookies.map((c) => `${c.name}=${c.value}`)).size).toBe(1)
   const [row] = await sql(`select cookie_hash from orders where id = ${String(ok(first))}`)
@@ -96,13 +96,13 @@ test("below the part minimum and below the order minimum are refused", async () 
 })
 
 test("courier is refused for pickup-only parts and outside Maharashtra", async () => {
-  const ship = { delivery: "ship" as const, payment: "upi_manual" as const, line1: "12 Shanti Nagar", city: "Mumbai", pincode: "400064" }
+  const ship = { delivery: "ship" as const, payment: "upi_manual" as const, line1: "12 Shanti Nagar", line2: "Marve Road", city: "Mumbai", pincode: "400064" }
   expect(await placeOrder(order({ ...ship, lines: [{ id: 4, qty: 100, unitPaise: 9000 }] }))).toMatchObject({ ok: false, kind: "message", message: expect.stringContaining("picked up") as string })
   expect(await placeOrder(order({ ...ship, pincode: "560001" }))).toMatchObject({ ok: false, kind: "fields", fields: { pincode: expect.any(String) as string } })
 })
 
 test("courier charge comes from the bands, and above the last band the order waits for a quote", async () => {
-  const ship = { delivery: "ship" as const, payment: "upi_manual" as const, line1: "12 Shanti Nagar", city: "Mumbai", pincode: "400064" }
+  const ship = { delivery: "ship" as const, payment: "upi_manual" as const, line1: "12 Shanti Nagar", line2: "Marve Road", city: "Mumbai", pincode: "400064" }
   const small = ok(await placeOrder(order({ ...ship, lines: [{ id: 1, qty: 1, unitPaise: 110000 }] })))
   const big = ok(await placeOrder(order({ ...ship, lines: [{ id: 1, qty: 4, unitPaise: 110000 }] })))
   const rows = await sql(`select id, stage, charges_paise from orders where id in (${String(small)}, ${String(big)}) order by id`)

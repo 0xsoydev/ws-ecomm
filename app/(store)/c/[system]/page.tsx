@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: PageProps<"/c/[system]">): Pr
   if (!found) return { title: "Page not found" }
   return {
     title: `${found.system.name} for electric scooters in Mumbai`,
-    description: `${found.system.name}: ${String(found.system.count)} parts with counter prices. Pick up at Gulab Auto Garage, Malad West, Mumbai.`,
+    description: found.system.blurb || `${found.system.name}: ${String(found.system.count)} parts with counter prices. Pick up at Gulab Auto Garage, Malad West, Mumbai.`,
     alternates: { canonical: `/c/${found.system.slug}` },
   }
 }

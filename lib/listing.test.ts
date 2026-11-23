@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { applyFilter, facetCounts, type Filterable, type ListingFilter } from "./listing"
+import { applyFilter, facetCounts, facetValues, type Filterable, type ListingFilter } from "./listing"
 
 const t = (name: string, over: Partial<Filterable> = {}): Filterable => ({
   code: null,
@@ -56,4 +56,12 @@ test("spec facets: OR within a key, AND across keys, counts ignore their own key
   const counts = facetCounts(bms, { ...none, specs: ["Maker=Daly"] }).specs
   expect(counts.get("Maker")).toEqual(new Map([["Daly", 2], ["JBD", 1]]))
   expect(counts.get("Series cells")).toEqual(new Map([["13S", 1], ["16S", 1]]))
+})
+
+test("voltage specs become single voltages so one filter covers every way of writing them", () => {
+  expect(facetValues("Voltage", "48-72V")).toEqual(["48V", "60V", "64V", "72V"])
+  expect(facetValues("Voltage", "48/60/72V")).toEqual(["48V", "60V", "72V"])
+  expect(facetValues("Voltage", "48V/60V/72V")).toEqual(["48V", "60V", "72V"])
+  expect(facetValues("Voltage", "48V class")).toEqual(["48V"])
+  expect(facetValues("Maker", "Daly")).toEqual(["Daly"])
 })

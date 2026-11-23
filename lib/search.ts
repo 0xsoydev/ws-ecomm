@@ -2,7 +2,7 @@ import type { Catalog } from "./storefront"
 
 export type Searchable = { code: string | null; name: string; terms: string; context: string; image: unknown; purchasable: boolean; stock: { kind: string } }
 
-const WORDS: Record<string, string> = {
+const WORDS: Record<string, string | string[]> = {
   accelerator: "throttle",
   accelator: "throttle",
   excelator: "throttle",
@@ -21,7 +21,11 @@ const WORDS: Record<string, string> = {
   indicater: "indicator",
   blinker: "indicator",
   tire: "tyre",
-  बैटरी: "battery",
+  battery: ["battery", "bms", "cell"],
+  बैटरी: ["battery", "bms", "cell"],
+  बीएमएस: "bms",
+  हेडलाइट: "headlight",
+  स्पीडोमीटर: "speedometer",
   ब्रेक: "brake",
   पैड: "pad",
   लाइट: "light",
@@ -38,7 +42,10 @@ export function normalise(text: string) {
 
 export function codeMissing(name: string, code: string | null): code is string {
   const words = name.split(/[^\p{L}\p{N}]+/u).map(normalise)
-  return code !== null && !code.split(/[^\p{L}\p{N}]+/u).filter(Boolean).every((t) => words.includes(normalise(t)))
+  if (code === null) return false
+  const tokens = code.split(/[^\p{L}\p{N}]+/u).filter(Boolean).map(normalise)
+  const key = tokens.filter((t) => /\d/.test(t))
+  return !(key.length ? key : tokens).every((t) => words.includes(t))
 }
 
 const VOLTS = [36, 48, 60, 64, 72, 84, 96]
@@ -85,49 +92,61 @@ export function stem(word: string) {
   return word.length > 4 && word.endsWith("ies") ? `${word.slice(0, -3)}y` : word.length > 3 && word.endsWith("s") && !word.endsWith("ss") ? word.slice(0, -1) : word
 }
 
-function queryWords(query: string) {
+function queryGroups(query: string): string[][] {
   return query
     .trim()
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
-    .map((w) => WORDS[w] ?? WORDS[stem(w)] ?? stem(w))
+    .map((w) => [WORDS[w] ?? WORDS[stem(w)] ?? stem(w)].flat().map(normalise).filter(Boolean))
+    .filter((g) => g.length > 0)
+}
+
+export function interpreted(query: string) {
+  const raw = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const read = raw.map((w) => [WORDS[w] ?? WORDS[stem(w)] ?? w].flat()[0] ?? w)
+  return read.some((w, i) => w !== raw[i] && w !== stem(raw[i] ?? "")) ? read.join(" ") : null
 }
 
 export function matchesName(name: string, query: string) {
-  const tokens = queryWords(query).map((w) => stem(normalise(w))).filter((t) => t.length >= 2)
+  const groups = queryGroups(query).map((g) => g.map(stem).filter((t) => t.length >= 2))
   const words = name.split(/[\s,&/()]+/).map((w) => stem(normalise(w))).filter((w) => w.length > 0)
-  return tokens.length > 0 && tokens.every((t) => words.some((w) => w.startsWith(t) || (t.length >= 5 && distance(w, t) <= 1)))
+  return groups.length > 0 && groups.every((g) => g.some((t) => words.some((w) => w.startsWith(t) || (t.length >= 4 && distance(w, t) <= 1))))
 }
 
-function score(item: Searchable, q: string, tokens: readonly string[]) {
+function score(item: Searchable, q: string, groups: readonly string[][]) {
   const code = item.code ? normalise(item.code) : ""
   if (code && code === q) return 100
   if (code && code.startsWith(q)) return 80
   if (normalise(item.name).startsWith(q)) return 60
-  if (tokens.every((t) => item.terms.includes(t))) return 40
+  const has = (text: string) => groups.every((g) => g.some((t) => text.includes(t)))
+  if (has(item.terms)) return 40
+  const firsts = groups.map((g) => g[0] ?? "")
   if (q.length >= 5) {
     const limit = q.length >= 8 ? 2 : 1
     const words = [code, ...item.name.split(/\s+/).map(normalise)].filter((w) => w.length > 0)
     if (words.some((w) => Math.abs(w.length - q.length) <= limit && distance(w, q) <= limit)) return 30
-    if (tokens.length > 1 && tokens.every((t) => item.terms.split(" ").some((w) => w.startsWith(t) || (t.length >= 5 && distance(w, t) <= 1)))) return 25
+    if (firsts.length > 1 && firsts.every((t) => item.terms.split(" ").some((w) => w.startsWith(t) || (t.length >= 5 && distance(w, t) <= 1)))) return 25
   }
-  if (tokens.every((t) => item.context.includes(t) || item.terms.includes(t))) return 20
-  const hits = tokens.filter((t) => t.length >= 3 && (item.terms.includes(t) || item.context.includes(t))).length
-  return tokens.length > 1 && hits * 2 >= tokens.length ? 5 : 0
+  if (has(`${item.terms} ${item.context}`)) return 20
+  if (groups.length < 2) return 0
+  const hit = groups.filter((g) => g.some((t) => t.length >= 3 && (item.terms.includes(t) || item.context.includes(t))))
+  if (hit.length * 2 < groups.length) return 0
+  const covered = hit.reduce((n, g) => n + (g[0]?.length ?? 0), 0)
+  return Math.max(1, Math.round((9 * covered) / firsts.reduce((n, t) => n + t.length, 0)))
 }
 
 export const EXACT = 80
+export const CLOSE = 10
 
 export function searchScored<T extends Searchable>(items: readonly T[], query: string, limit = Infinity): { item: T; s: number }[] {
-  const words = queryWords(query)
-  const q = normalise(words.join(""))
+  const groups = queryGroups(query)
+  const q = groups.map((g) => g[0] ?? "").join("")
   if (q.length < 2) return []
-  const tokens = words.map(normalise).filter((t) => t.length > 0)
-  const scored = items.map((item) => ({ item, s: score(item, q, tokens) })).filter((r) => r.s > 0)
-  const strong = scored.some((r) => r.s > 5)
+  const scored = items.map((item) => ({ item, s: score(item, q, groups) })).filter((r) => r.s > 0)
+  const strong = scored.some((r) => r.s >= CLOSE)
   return scored
-    .filter((r) => !strong || r.s > 5)
+    .filter((r) => !strong || r.s >= CLOSE)
     .sort(
       (a, b) =>
         b.s - a.s ||

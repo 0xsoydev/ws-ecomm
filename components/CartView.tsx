@@ -5,7 +5,7 @@ import { ShoppingBag } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { clearCart, restoreCart, setQty, useCart, type CartLine } from "@/lib/cart"
+import { clearCart, lastChangeWasQuiet, restoreCart, setQty, useCart, type CartLine } from "@/lib/cart"
 import { courierFee } from "@/lib/delivery"
 import { formatPaise } from "@/lib/format"
 import { hasRetailTier, nextBreak, perUnit, unitPrice } from "@/lib/pricing"
@@ -29,7 +29,7 @@ function useRemovalUndo(lines: CartLine[], name: (id: number) => string) {
   useEffect(() => {
     const before = previous.current
     previous.current = lines
-    if (!before) return
+    if (!before || lastChangeWasQuiet()) return
     if (lines.length === 0 && before.length > 1) {
       toast("Cart cleared", { action: { label: "Undo", onClick: () => { restoreCart(before) } }, duration: 5000 })
       return

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { codeMissing, EXACT, matchesName, searchScored, normalise, searchProducts, searchTerms } from "./search"
+import { codeMissing, EXACT, interpreted, matchesName, searchScored, normalise, searchProducts, searchTerms } from "./search"
 
 const item = (code: string | null, name: string, context: string[] = [], purchasable = false) => ({
   code,
@@ -84,6 +84,7 @@ test("a code is added to a name only when the name lacks its words", () => {
   expect(codeMissing("Daly BMS 13S 40A, 48V", "13S 40A")).toBe(false)
   expect(codeMissing("Dipper switch", "SW-DIM")).toBe(true)
   expect(codeMissing("Dipper switch", null)).toBe(false)
+  expect(codeMissing("Front disc brake pads DP10 for Ather 450", "DP10 ATH FRONT")).toBe(false)
 })
 
 test("plural, Hinglish and Hindi words reach the right parts", () => {
@@ -110,4 +111,25 @@ test("an exact code ranks first and is marked exact", () => {
   const top = searchScored(items, "13S 40A")[0]
   expect(top?.item.name).toBe("Daly BMS 13S 40A, 48V")
   expect(top?.s).toBeGreaterThanOrEqual(EXACT)
+})
+
+test("a broad word finds parts named for it, not the rest of their section", () => {
+  const parts = [item(null, "Rear disc brake pads DP13", ["Brake parts"]), item(null, "Ball racer set BRJ1", ["Bearings & ball racers"]), item(null, "Disc brake lever", ["Brake parts"])]
+  expect(searchProducts(parts, "brake").map((i) => i.name).sort()).toEqual(["Disc brake lever", "Rear disc brake pads DP13"])
+})
+
+test("when no part has every word, the closest by meaning comes first", () => {
+  const parts = [item(null, "Brake lever, Ola S1", ["Brake parts"]), item(null, "LED headlight, round", ["Headlights"])]
+  expect(searchProducts(parts, "headlight ola").map((i) => i.name)).toEqual(["LED headlight, round", "Brake lever, Ola S1"])
+})
+
+test("a corrected query is reported back, a plural is not", () => {
+  expect(interpreted("break pad")).toBe("brake pad")
+  expect(interpreted("brake pads")).toBeNull()
+  expect(interpreted("13S 40A")).toBeNull()
+})
+
+test("vehicle shortcuts forgive a typo and Hindi BMS reaches BMS boards", () => {
+  expect(matchesName("Ola S1 ola", "olaa")).toBe(true)
+  expect(names("बीएमएस")).toContain("Daly BMS 13S 40A, 48V")
 })

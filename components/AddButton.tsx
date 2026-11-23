@@ -128,7 +128,7 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
         {qty <= min ? <Trash aria-hidden className="size-4" strokeWidth={1.75} /> : <Minus aria-hidden className="size-4" strokeWidth={2} />}
       </button>
       <input
-        aria-label={`Quantity of ${name}`}
+        aria-label="Quantity"
         inputMode="numeric"
         pattern="[0-9]*"
         enterKeyHint="done"

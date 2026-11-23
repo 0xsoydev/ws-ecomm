@@ -80,7 +80,8 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
   const [notice, setNotice] = useState<ReactNode>(null)
   const [delivery, setDelivery] = useState<"pickup" | "ship" | null>(null)
   const [pinError, setPinError] = useState<string | null>(null)
-  const city = useRef<HTMLInputElement>(null)
+  const [city, setCity] = useState<string | null>(null)
+  const [autoCity, setAutoCity] = useState(false)
   const [payment, setPayment] = useState<"pay_at_store" | "upi_manual">("pay_at_store")
 
   if (lines.length === 0) {
@@ -131,14 +132,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (belowMinimum) {
-      setNotice(
-        <>
-          The minimum order is {formatPaise(minOrderPaise)}. Add {formatPaise(minOrderPaise - itemsPaise)} more.{" "}
-          <Link href="/" className="font-semibold">
-            Add more parts
-          </Link>
-        </>,
-      )
+      document.getElementById("co-min")?.focus()
       return
     }
     const form = new FormData(e.currentTarget)
@@ -176,7 +170,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
       }
       if (result.ok) {
         writeStored(SAVED, remember ? JSON.stringify({ name: payload.name, phone: payload.phone, email: payload.email, line1: payload.line1, line2: payload.line2, landmark: payload.landmark, city: payload.city, pincode: payload.pincode, business: payload.business, gstin: payload.gstin, delivery: payload.delivery }) : null)
-        clearCart()
+        clearCart(true)
         router.replace(`/order/${result.number}`)
         return
       }
@@ -188,6 +182,16 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
       }
       setErrors({})
       if (result.kind === "message") setNotice(result.message)
+      if (result.kind === "placed") {
+        setNotice(
+          <>
+            You already placed this order as {result.number}. Changes made after that were not added; tell us on WhatsApp.{" "}
+            <Link href={`/order/${result.number}`} className="font-semibold">
+              View the order
+            </Link>
+          </>,
+        )
+      }
       if (result.kind === "stock") {
         const names = result.ids.map((id) => byId.get(id)?.name ?? "A part").join(", ")
         setNotice(
@@ -222,7 +226,16 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
   const described = (k: string) => (errors[k] ? { "aria-invalid": true, "aria-describedby": `co-${k}-error` } : {})
 
   return (
-    <form onSubmit={submit} noValidate className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12">
+    <form
+      onSubmit={submit}
+      onInput={(e) => {
+        const target = e.target
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return
+        const name = target.name
+        if (name === "pincode") setPinError(null)
+        if (errors[name]) setErrors((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== name)))
+      }}
+      noValidate className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12">
       <div className="flex flex-col gap-8">
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-4 text-lg font-semibold">Your details</legend>
@@ -307,13 +320,23 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
                   onBlur={(e) => {
                     const pin = e.currentTarget.value.trim()
                     setPinError(pin && !isMaharashtraPincode(pin) ? "We deliver within Maharashtra only. Enter a pincode starting 40 to 44" : null)
-                    if (/^400\d{3}$/.test(pin) && city.current && !city.current.value) city.current.value = "Mumbai"
+                    if (/^400\d{3}$/.test(pin) && !(city ?? saved?.city)) {
+                      setCity("Mumbai")
+                      setAutoCity(true)
+                    }
                   }}
                   {...(err("pincode") || pinError ? { "aria-invalid": true, "aria-describedby": "co-pincode-error" } : {})}
                 />
               </Field>
               <Field id="co-city" label="City" error={err("city")}>
-                <input ref={city} id="co-city" name="city" autoComplete="address-level2" defaultValue={saved?.city} className={field} {...described("city")} />
+                <input id="co-city" name="city" autoComplete="address-level2" value={city ?? saved?.city ?? ""}
+                  onFocus={(e) => {
+                    if (autoCity) e.currentTarget.select()
+                  }}
+                  onChange={(e) => {
+                    setCity(e.currentTarget.value)
+                    setAutoCity(false)
+                  }} className={field} {...described("city")} />
               </Field>
               <Field id="co-state" label="State">
                 <input id="co-state" value="Maharashtra" readOnly className={`${field} text-muted`} />
@@ -405,10 +428,17 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
             {notice}
           </p>
         ) : null}
-        {belowMinimum ? <p className="text-sm text-danger">The minimum order is {formatPaise(minOrderPaise)}. Add {formatPaise(minOrderPaise - itemsPaise)} more.</p> : null}
-        <button type="submit" disabled={pending || priced.length === 0} className={`${button.big} w-full`}>
+        {belowMinimum ? (
+          <p id="co-min" role="status" tabIndex={-1} className="rounded-control border border-danger/60 p-3 text-sm">
+            The minimum order is {formatPaise(minOrderPaise)}. Add {formatPaise(minOrderPaise - itemsPaise)} more.{" "}
+            <Link href="/" className="font-semibold">
+              Add more parts
+            </Link>
+          </p>
+        ) : null}
+        <button type="submit" disabled={pending || priced.length === 0} aria-describedby={belowMinimum ? "co-min" : undefined} className={`${belowMinimum ? `${button.secondary} h-13 text-lg` : button.big} w-full`}>
           {pending ? <LoaderCircle aria-hidden className="size-5 animate-spin" strokeWidth={2} /> : null}
-          {pending ? "Placing order" : `Place order, ${formatPaise(totalPaise)}`}
+          {pending ? "Placing order" : belowMinimum ? `Add ${formatPaise(minOrderPaise - itemsPaise)} more to order` : `Place order, ${formatPaise(totalPaise)}`}
         </button>
         <p className="text-xs text-muted">
           By placing this order you agree to our{" "}

@@ -155,7 +155,18 @@ export default function BuyBox({ id, name, priced, unit, minOrderPaise }: { id: 
         </p>
       )}
       {tiers && priced.retailPaise !== null ? (
-        <div role="radiogroup" aria-label="Price per piece" className="grid grid-cols-2 gap-2">
+        <div
+          role="radiogroup"
+          aria-label="Price per piece"
+          className="grid grid-cols-2 gap-2"
+          onKeyDown={(e) => {
+            if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return
+            e.preventDefault()
+            const group = e.currentTarget
+            setQty(tier === "retail" ? priced.moq : min)
+            requestAnimationFrame(() => group.querySelector<HTMLElement>('[aria-checked="true"]')?.focus())
+          }}
+        >
           {[
             { key: "retail", label: retailLabel, paise: priced.retailPaise, start: min, note: null },
             { key: "wholesale", label: `${String(priced.moq)} or more`, paise: priced.wholesalePaise, start: priced.moq, note: "Wholesale" },
@@ -167,6 +178,7 @@ export default function BuyBox({ id, name, priced, unit, minOrderPaise }: { id: 
                 type="button"
                 role="radio"
                 aria-checked={on}
+                tabIndex={on ? 0 : -1}
                 onClick={() => { setQty(t.start); }}
                 className={`relative flex flex-col items-start gap-0.5 rounded-control border p-3 text-left transition-[transform] duration-150 ease-out active:scale-[0.98] ${on ? "border-ink bg-accent/20 shadow-[inset_0_0_0_1px_var(--ink)]" : "border-line-strong bg-surface"}`}
               >
@@ -221,7 +233,7 @@ export default function BuyBox({ id, name, priced, unit, minOrderPaise }: { id: 
         ) : null}
       </p>
 
-      <div id="buy-main" className="grid grid-cols-2 gap-2">
+      <div id="buy-main" className={`grid gap-2 ${!inCart && total < minOrderPaise ? "grid-cols-1" : "grid-cols-2"}`}>
         {inCart ? (
           <Link ref={viewCart} href="/cart" className={`${button.secondary} h-13 text-lg no-underline`}>
             <ShoppingBag aria-hidden className="size-5" strokeWidth={1.75} />
@@ -232,9 +244,11 @@ export default function BuyBox({ id, name, priced, unit, minOrderPaise }: { id: 
             Add to cart
           </button>
         )}
-        <button type="button" onClick={buyNow} className={inCart ? button.big : `${button.secondary} h-13 text-lg`}>
-          {inCart ? "Checkout" : "Buy now"}
-        </button>
+        {inCart || total >= minOrderPaise ? (
+          <button type="button" onClick={buyNow} className={inCart ? button.big : `${button.secondary} h-13 text-lg`}>
+            {inCart ? "Checkout" : "Buy now"}
+          </button>
+        ) : null}
       </div>
 
       {total < minOrderPaise ? (
