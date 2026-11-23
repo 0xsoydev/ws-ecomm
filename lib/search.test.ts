@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { matchesName, normalise, searchProducts, searchTerms } from "./search"
+import { codeMissing, matchesName, normalise, searchProducts, searchTerms } from "./search"
 
 const item = (code: string | null, name: string, context: string[] = [], purchasable = false) => ({
   code,
@@ -71,4 +71,11 @@ test("names match by stem and transposition", () => {
   expect(matchesName("Brake parts", "barke")).toBe(true)
   expect(matchesName("Ola S1", "ola")).toBe(true)
   expect(matchesName("Lighting", "ola")).toBe(false)
+})
+
+test("a code is added to a name only when the name lacks its words", () => {
+  expect(codeMissing("Rear disc brake pads DP13 for Ola S1", "DP13 OLA REAR")).toBe(false)
+  expect(codeMissing("Daly BMS 13S 40A, 48V", "13S 40A")).toBe(false)
+  expect(codeMissing("Dipper switch", "SW-DIM")).toBe(true)
+  expect(codeMissing("Dipper switch", null)).toBe(false)
 })

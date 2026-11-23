@@ -31,7 +31,8 @@ export function normalise(text: string) {
 }
 
 export function codeMissing(name: string, code: string | null): code is string {
-  return code !== null && !normalise(name).includes(normalise(code))
+  const words = name.split(/[^\p{L}\p{N}]+/u).map(normalise)
+  return code !== null && !code.split(/[^\p{L}\p{N}]+/u).filter(Boolean).every((t) => words.includes(normalise(t)))
 }
 
 export function searchTerms(parts: readonly (string | null | undefined)[]) {
