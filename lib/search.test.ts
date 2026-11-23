@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { normalise, searchProducts, searchTerms } from "./search"
+import { matchesName, normalise, searchProducts, searchTerms } from "./search"
 
 const item = (code: string | null, name: string, context: string[] = [], purchasable = false) => ({
   code,
@@ -56,4 +56,19 @@ test("purchasable ranks above display-only at equal score", () => {
 test("a category word alone does not drag in the whole category when names match", () => {
   expect(names("bms")).toEqual(["Daly BMS 13S 40A, 48V"])
   expect(names("holders")).toContain("Cell holder 18650")
+})
+
+test("misspellings and synonyms find the part", () => {
+  expect(names("break lever")).toContain("Brake lever, Ola S1")
+  expect(names("throtle")).toContain("Throttle with reverse switch")
+  expect(names("accelator")).toContain("Throttle with reverse switch")
+  expect(names("tyre")).toEqual([])
+})
+
+test("names match by stem and transposition", () => {
+  expect(matchesName("Batteries & BMS", "battery")).toBe(true)
+  expect(matchesName("Batteries & BMS", "बैटरी")).toBe(true)
+  expect(matchesName("Brake parts", "barke")).toBe(true)
+  expect(matchesName("Ola S1", "ola")).toBe(true)
+  expect(matchesName("Lighting", "ola")).toBe(false)
 })

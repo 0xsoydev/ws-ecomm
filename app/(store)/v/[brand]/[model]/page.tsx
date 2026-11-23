@@ -1,11 +1,14 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import Listing, { vehicleOptions } from "@/components/Listing"
 import PageHead from "@/components/PageHead"
 import RememberVehicle from "@/components/RememberVehicle"
 import { ListingSkeleton } from "@/components/Skeletons"
-import { catalog } from "@/lib/storefront"
+import { partsCount } from "@/lib/format"
+import { catalog, VEHICLE_INDEX_MIN, vehicleTiles } from "@/lib/storefront"
+
+export const ensureStatic = "navigation"
 
 export async function generateStaticParams() {
   const { models } = await catalog()
@@ -18,7 +21,7 @@ async function load(brand: string, model: string) {
   if (!m) return null
   const option = vehicleOptions([m])[0]
   if (!option) return null
-  const tiles = data.tiles.filter((t) => t.vehicles.some((v) => v.modelId === m.id))
+  const tiles = vehicleTiles(data, [m.id])
   const verified = tiles.filter((t) => t.vehicles.some((v) => v.modelId === m.id && v.verified))
   return { data, m, option, tiles, verified, rest: tiles.filter((t) => !verified.includes(t)) }
 }
@@ -26,12 +29,12 @@ async function load(brand: string, model: string) {
 export async function generateMetadata({ params }: PageProps<"/v/[brand]/[model]">): Promise<Metadata> {
   const p = await params
   const found = await load(p.brand, p.model)
-  if (!found) return {}
+  if (!found) return { title: "Page not found" }
   return {
-    title: `Parts for ${found.option.label}`,
-    description: `${String(found.tiles.length)} parts sold for the ${found.option.label} at Gulab Auto Garage, Malad West, Mumbai.`,
+    title: `${found.option.label} spare parts in Mumbai`,
+    description: `${partsCount(found.tiles.length)} for the ${found.option.label}: brake pads, levers, lights and electricals with counter prices at Gulab Auto Garage, Malad West, Mumbai.`,
     alternates: { canonical: `/v/${p.brand}/${p.model}` },
-    robots: found.verified.length >= 8 ? undefined : { index: false, follow: true },
+    robots: found.tiles.length >= VEHICLE_INDEX_MIN ? undefined : { index: false, follow: true },
   }
 }
 
@@ -56,8 +59,8 @@ async function Content({ params }: { params: PageProps<"/v/[brand]/[model]">["pa
   ].filter((g) => g.tiles.length > 0)
   return (
     <>
-      <PageHead back={{ href: "/v", label: "Vehicles" }} title={`Parts for ${option.label}`}>
-        {rest.length ? <p className="max-w-[60ch] text-sm text-muted">Parts marked sold for this scooter are not yet checked on one. Not sure? Send us a photo on WhatsApp.</p> : null}
+      <PageHead back={{ href: `/v/${found.m.brandSlug}` as Route, label: found.m.brandName }} title={`Parts for ${option.label}`}>
+        {rest.length ? <p className="max-w-[60ch] text-sm text-muted">Mechanics buy these for the {option.label}. We have not test-fitted each one on it yet, so send a photo of your old part on WhatsApp and we confirm before you pay.</p> : null}
         <RememberVehicle vehicleKey={option.key} label={option.label} />
       </PageHead>
       {groups.length ? <Listing groups={groups} models={data.models} chips="spy" showVehicleFacet={false} /> : <p className="py-8 text-muted">No parts listed for this scooter yet. Ask us on WhatsApp.</p>}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import PageHead from "@/components/PageHead"
+import ProductCard from "@/components/ProductCard"
 import WhatsAppLink from "@/components/WhatsAppLink"
 import { formatPaise } from "@/lib/format"
 import { hasRetailTier } from "@/lib/pricing"
@@ -15,9 +16,10 @@ export const metadata: Metadata = {
 
 export default async function WholesalePage() {
   const [data, info] = await Promise.all([catalog(), storeInfo()])
+  const bulk = data.tiles.filter((t) => t.purchasable && t.priced.moq > 1).slice(0, 8)
   const example = data.tiles.find((t) => t.approved && t.priced.retailPaise !== null && hasRetailTier(t.priced) && t.priced.moq >= 3)
   return (
-    <div className="mx-auto max-w-[800px] px-4 sm:px-6">
+    <div className="mx-auto max-w-[1000px] px-4 sm:px-6">
       <PageHead back={{ href: "/", label: "Home" }} title="Wholesale prices, no account needed">
         <p className="max-w-[60ch] text-muted">Every part has a break quantity. Buy that many or more and every piece is charged at the wholesale price.</p>
       </PageHead>
@@ -48,6 +50,23 @@ export default async function WholesalePage() {
           </p>
           <Link href={`/p/${example.slug}`} className="mt-2 inline-block font-medium">
             Try it on this part
+          </Link>
+        </section>
+      ) : null}
+      {bulk.length ? (
+        <section aria-labelledby="bulk-parts" className="mt-10">
+          <h2 id="bulk-parts" className="text-xl">
+            Parts with a quantity price
+          </h2>
+          <ul className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+            {bulk.map((t) => (
+              <li key={t.id} className="flex">
+                <ProductCard tile={t} />
+              </li>
+            ))}
+          </ul>
+          <Link href="/prices" className="mt-4 inline-block font-medium">
+            See every price
           </Link>
         </section>
       ) : null}

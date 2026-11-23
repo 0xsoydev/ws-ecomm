@@ -159,6 +159,12 @@ export async function catalog() {
 
 export type Catalog = Awaited<ReturnType<typeof catalog>>
 
+export const VEHICLE_INDEX_MIN = 4
+
+export function vehicleTiles(data: Catalog, modelIds: readonly number[]) {
+  return data.tiles.filter((t) => t.vehicles.some((v) => modelIds.includes(v.modelId)))
+}
+
 export async function productPage(slug: string) {
   "use cache"
   cacheLife("max")
@@ -222,6 +228,7 @@ export async function productPage(slug: string) {
     seo: { title: row.seoTitle, description: row.seoDescription },
     unitCode: unit?.unitCode ?? "C62",
     maker: row.maker,
+    sku: row.sku,
     related,
     info,
   }

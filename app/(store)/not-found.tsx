@@ -1,12 +1,15 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { button } from "@/lib/ui"
+
+export const metadata: Metadata = { title: "Page not found" }
 
 export default function NotFound() {
   return (
     <div className="mx-auto flex max-w-[680px] flex-col items-start gap-4 px-4 py-16 sm:px-6">
       <h1 className="text-2xl">We couldn&rsquo;t find that page.</h1>
       <p className="text-muted">Search for the part by its code or name.</p>
-      <form action="/search" role="search" className="w-full">
+      <form action="/search" role="search" aria-label="Search again" className="w-full">
         <label htmlFor="nf-q" className="sr-only">
           Search parts
         </label>

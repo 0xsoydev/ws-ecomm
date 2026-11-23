@@ -14,10 +14,13 @@ import { isIndia } from "@/lib/catalog"
 import { publicEnv } from "@/lib/env.public"
 import { formatPaise, unitWord } from "@/lib/format"
 import { breadcrumbs, jsonLd, productNode } from "@/lib/jsonld"
-import { hasRetailTier, listingPrice, minQty, priceCopy } from "@/lib/pricing"
+import { codeMissing } from "@/lib/search"
+import { hasRetailTier, minQty, priceCopy } from "@/lib/pricing"
 import { catalog, productPage, type ProductPage } from "@/lib/storefront"
 import { button } from "@/lib/ui"
 import { askAboutPart, photoHelp, waLink } from "@/lib/whatsapp"
+
+export const ensureStatic = "navigation"
 
 export async function generateStaticParams() {
   const { tiles } = await catalog()
@@ -26,9 +29,10 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/p/[slug]">): Promise<Metadata> {
   const page = await productPage((await params).slug)
-  if (!page || "redirect" in page) return {}
+  if (!page) return { title: "Page not found" }
+  if ("redirect" in page) return {}
   const { tile } = page
-  const base = tile.code && !tile.name.includes(tile.code) ? `${tile.name} ${tile.code}` : tile.name
+  const base = codeMissing(tile.name, tile.code) ? `${tile.name} ${tile.code}` : tile.name
   const vehicle = page.fits[0]?.label
   const title = page.seo.title ?? `${base}${vehicle && !base.toLowerCase().includes(vehicle.toLowerCase()) ? ` for ${vehicle}` : ""}, ${priceCopy(tile.priced, tile.unit).main} | WS Green Mumbai`
   const description = page.seo.description ?? `${priceCopy(tile.priced, tile.unit).main}. ${summaryOf(page)}`.slice(0, 300)
@@ -71,7 +75,7 @@ function summaryOf(page: ProductPage) {
   const min = minQty(tile.priced)
   const fits = page.fits.map((f) => f.label)
   const parts = [
-    `${tile.name}${tile.code && !tile.name.includes(tile.code) ? ` (part code ${tile.code})` : ""} is part of our ${page.category.name.toLowerCase()} range for electric two-wheelers.`,
+    `${tile.name}${codeMissing(tile.name, tile.code) ? ` (part code ${tile.code})` : ""} is in our ${page.category.name} range for electric two-wheelers.`,
     page.maker ? `Made by ${page.maker}.` : null,
     fits.length ? `Sold for the ${fits.join(", ")}. Check it against your old part, or send us a photo on WhatsApp before ordering.` : "Check it against your old part, or send us a photo on WhatsApp before ordering.",
     `Sold per ${unitWord(tile.unit, 1)}${min > 1 ? `, minimum ${String(min)} ${unitWord(tile.unit, min)} per order` : ""}.`,
@@ -98,21 +102,24 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
       { name: tile.name, path: `/p/${tile.slug}` },
     ]),
   ]
-  if (page.images.length && tile.purchasable) {
+  if (page.images.length && tile.compliant) {
     ld.push(
       productNode({
         name: tile.name,
         slug: tile.slug,
         code: tile.code,
+        sku: page.sku,
         description: page.description || summaryOf(page),
         maker: page.maker,
         category: page.category.name,
         images: page.images,
-        listing: listingPrice(tile.priced),
+        unitPaise: tile.priced.retailPaise ?? tile.priced.wholesalePaise,
+        minQty: minQty(tile.priced),
         unitCode: page.unitCode,
         inStock: tile.stock.kind !== "out",
         pickupOnly: tile.pickupOnly,
         fits: page.fits.filter((f) => f.verified).map((f) => f.label),
+        specs: page.specs,
         countryOfOrigin: legal.countryOfOrigin,
       }),
     )
@@ -291,8 +298,7 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
             {legal.countryOfOrigin ? <p>Country of origin: {legal.countryOfOrigin}.</p> : null}
             {legal.maker ? (
               <p>
-                {imported ? "Importer" : "Maker"}: {legal.maker}
-                {legal.makerAddress ? `, ${legal.makerAddress}` : ""}.
+                {imported ? "Importer" : "Maker"}: {`${legal.maker}${legal.makerAddress ? `, ${legal.makerAddress}` : ""}`.replace(/\.*$/, ".")}
               </p>
             ) : null}
             {legal.prePackaged && legal.mrpPaise !== null ? <p>MRP {formatPaise(legal.mrpPaise)} incl. of all taxes.</p> : null}
@@ -303,7 +309,7 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
                 HSN {legal.hsn}. GST {legal.gstRateBps / 100}% included.
               </p>
             ) : (
-              <p>Price inclusive of all charges.</p>
+              <p>Price includes all taxes. Delivery is charged separately.</p>
             )}
           </section>
         </div>

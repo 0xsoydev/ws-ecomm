@@ -37,6 +37,6 @@ test("order message reads like the counter slip", () => {
     link: "https://example.test/order/WS10023",
   })
   expect(text).toBe(
-    "Order WS10023\n2 pcs LED bulb LB2 oval (LB2 OVAL), ₹180 / pc = ₹360\n5 pcs Dim switch, ₹26 / pc, wholesale = ₹130\nItems ₹490, delivery charge to be confirmed\nRavi, courier to 400097\nLink: https://example.test/order/WS10023",
+    "Order WS10023\n2 pcs LED bulb LB2 oval, ₹180 / pc = ₹360\n5 pcs Dim switch, ₹26 / pc, wholesale = ₹130\nItems ₹490, delivery charge to be confirmed\nRavi, courier to 400097\nLink: https://example.test/order/WS10023",
   )
 })

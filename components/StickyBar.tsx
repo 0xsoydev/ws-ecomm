@@ -9,7 +9,7 @@ export default function StickyBar({ targetId, label, children }: { targetId: str
   useEffect(() => {
     const target = document.getElementById(targetId)
     if (!target) return
-    const io = new IntersectionObserver(([e]) => { setShow(e ? !e.isIntersecting && e.boundingClientRect.top < 0 : false); }, { rootMargin: "-56px 0px 0px 0px" })
+    const io = new IntersectionObserver(([e]) => { setShow(e ? !e.isIntersecting : false); }, { rootMargin: "-56px 0px 0px 0px" })
     io.observe(target)
     return () => { io.disconnect(); }
   }, [targetId])

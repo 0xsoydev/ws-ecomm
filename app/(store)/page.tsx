@@ -1,5 +1,7 @@
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, MapPin, Store } from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
+import OpenStatus from "@/components/OpenStatus"
 import Placeholder from "@/components/Placeholder"
 import ProductCard from "@/components/ProductCard"
 import ProductImage from "@/components/ProductImage"
@@ -8,8 +10,10 @@ import { jsonLd, localBusiness, website } from "@/lib/jsonld"
 import { catalog, storeInfo, type Tile } from "@/lib/storefront"
 import { button } from "@/lib/ui"
 
+export const metadata: Metadata = { alternates: { canonical: "/" } }
+
 const FLAGSHIP = "batteries-bms"
-const PER_RAIL = 10
+const PER_RAIL = 6
 
 function ranked(tiles: Tile[]) {
   return tiles
@@ -30,7 +34,7 @@ export default async function Home() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd([website(), localBusiness(info.weeklyHours, info.scope)])} />
 
-      <nav aria-label="Categories" className="mx-auto max-w-[1200px] pt-4 sm:px-6 lg:pt-8">
+      <nav aria-label="Shop by category" className="mx-auto max-w-[1200px] pt-4 sm:px-6 lg:pt-8">
         <ul className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-8 sm:overflow-visible sm:px-0">
           {data.systems.map((s) => {
             const lead = bySystem.get(s.slug)?.find((t) => t.image)
@@ -54,6 +58,49 @@ export default async function Home() {
         <p className="mt-2 max-w-[62ch] text-muted">
           BMS boards, controllers, lights, brakes and body parts, sold by Gulab Auto Garage in Malad West. {info.pickupOnly ? "Pick up at the shop." : `${info.scope}, or pick up at the shop.`}
         </p>
+        <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+          <li className="flex items-center gap-1.5">
+            <Store aria-hidden className="size-4 text-muted" strokeWidth={1.75} />
+            <OpenStatus weekly={info.weeklyHours} special={info.specialHours} />
+          </li>
+          <li className="flex items-center gap-1.5">
+            <MapPin aria-hidden className="size-4 text-muted" strokeWidth={1.75} />
+            <Link href="/store" className="no-underline [@media(hover:hover)]:hover:underline">
+              Near Milap Theatre, Malad West
+            </Link>
+          </li>
+          {info.reviewLink ? (
+            <li>
+              <a href={info.reviewLink} target="_blank" rel="noopener noreferrer" className="font-medium">
+                Google reviews
+              </a>
+            </li>
+          ) : null}
+        </ul>
+      </section>
+
+      <section aria-labelledby="vehicles" className="mx-auto mt-6 max-w-[1200px] sm:px-6">
+        <h2 id="vehicles" className="px-4 text-sm font-semibold sm:px-0">
+          Shop by scooter
+        </h2>
+        <ul className="mt-2 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-0">
+          {brands.map(([slug, name]) => (
+            <li key={slug} className="snap-start">
+              <Link
+                href={`/v/${slug}`}
+                className="inline-flex h-11 items-center rounded-full border border-line-strong bg-surface px-4 font-medium whitespace-nowrap no-underline transition-colors duration-150 ease-out active:bg-bg [@media(hover:hover)]:hover:bg-bg"
+              >
+                {name}
+              </Link>
+            </li>
+          ))}
+          <li className="snap-start">
+            <Link href="/v" className="inline-flex h-11 items-center gap-0.5 px-2 text-sm font-medium whitespace-nowrap no-underline [@media(hover:hover)]:hover:underline">
+              All vehicles
+              <ChevronRight aria-hidden className="size-4" strokeWidth={2} />
+            </Link>
+          </li>
+        </ul>
       </section>
 
       {rails.map((s) => (
@@ -77,29 +124,6 @@ export default async function Home() {
           </ul>
         </section>
       ))}
-
-      <section aria-labelledby="vehicles" className="mx-auto mt-12 max-w-[1200px] sm:px-6">
-        <div className="flex items-baseline justify-between px-4 sm:px-0">
-          <h2 id="vehicles" className="text-xl">
-            Shop by vehicle
-          </h2>
-          <Link href="/v" className="text-sm font-medium no-underline [@media(hover:hover)]:hover:underline">
-            All vehicles
-          </Link>
-        </div>
-        <ul className="mt-3 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-0">
-          {brands.map(([slug, name]) => (
-            <li key={slug} className="snap-start">
-              <Link
-                href={`/v#${slug}`}
-                className="inline-flex h-11 items-center rounded-full border border-line-strong bg-surface px-4 font-medium whitespace-nowrap no-underline transition-colors duration-150 ease-out active:bg-bg [@media(hover:hover)]:hover:bg-bg"
-              >
-                {name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       <section aria-labelledby="wholesale" className="mx-auto mt-12 max-w-[1200px] px-4 sm:px-6">
         <div className="flex flex-col gap-4 rounded-container border border-line bg-surface p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8">

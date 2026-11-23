@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next"
 import { env } from "@/lib/env"
 import { publicEnv } from "@/lib/env.public"
-import { catalog } from "@/lib/storefront"
+import { catalog, VEHICLE_INDEX_MIN, vehicleTiles } from "@/lib/storefront"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!env.SITE_INDEXABLE) return []
@@ -13,5 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...data.systems.map((s) => ({ url: `${site}/c/${s.slug}` })),
     ...data.categories.filter((c) => c.count > 0).map((c) => ({ url: `${site}/c/${system.get(c.systemId) ?? ""}/${c.slug}` })),
     ...data.tiles.filter((t) => t.image).map((t) => ({ url: `${site}/p/${t.slug}` })),
+    ...data.models.filter((m) => vehicleTiles(data, [m.id]).length >= VEHICLE_INDEX_MIN).map((m) => ({ url: `${site}/v/${m.brandSlug}/${m.slug}` })),
+    ...[...new Set(data.models.map((m) => m.brandSlug))].map((b) => ({ url: `${site}/v/${b}` })),
   ]
 }

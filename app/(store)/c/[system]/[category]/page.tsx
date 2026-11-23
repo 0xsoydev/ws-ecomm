@@ -7,6 +7,8 @@ import { ListingSkeleton } from "@/components/Skeletons"
 import { breadcrumbs, itemList, jsonLd } from "@/lib/jsonld"
 import { catalog } from "@/lib/storefront"
 
+export const ensureStatic = "navigation"
+
 export async function generateStaticParams() {
   const { systems, categories } = await catalog()
   return categories.flatMap((c) => {
@@ -25,9 +27,9 @@ async function load(systemSlug: string, categorySlug: string) {
 export async function generateMetadata({ params }: PageProps<"/c/[system]/[category]">): Promise<Metadata> {
   const p = await params
   const found = await load(p.system, p.category)
-  if (!found) return {}
+  if (!found) return { title: "Page not found" }
   return {
-    title: `${found.category.name} for electric scooters | WS Green, Mumbai`,
+    title: `${found.category.name} for electric scooters in Mumbai`,
     description: `${found.category.name}: ${String(found.category.count)} parts with counter prices at Gulab Auto Garage, Malad West, Mumbai.`,
     alternates: { canonical: `/c/${found.system.slug}/${found.category.slug}` },
   }

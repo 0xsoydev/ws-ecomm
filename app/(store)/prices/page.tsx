@@ -21,19 +21,21 @@ function stockText(t: Tile) {
 
 export default async function PricesPage() {
   const data = await catalog()
-  const rows = data.tiles.filter((t) => t.approved)
+  const rows = data.tiles
   const groups = data.systems.map((s) => ({ s, rows: rows.filter((t) => t.systemSlug === s.slug) })).filter((g) => g.rows.length > 0)
   return (
     <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
       <PageHead back={{ href: "/", label: "Home" }} title="Price list">
-        <p className="max-w-[60ch] text-muted">Every confirmed price at the counter. Buy the break quantity or more and every piece is charged at the wholesale price.</p>
-        <a href="/prices.csv" download className="w-fit text-sm font-medium">
-          Download as CSV
-        </a>
+        <p className="max-w-[60ch] text-muted">Every part we sell, with its counter price. Where a part has a wholesale break, buy that many or more and every piece is charged at the wholesale price.</p>
+        {rows.length ? (
+          <a href="/prices.csv" download className="w-fit text-sm font-medium">
+            Download as CSV
+          </a>
+        ) : null}
       </PageHead>
       {groups.length === 0 ? (
         <div className="flex flex-col items-start gap-4 py-8">
-          <p>Prices are being confirmed. Ask on WhatsApp for any part.</p>
+          <p>No parts are listed yet. Ask on WhatsApp for any part.</p>
           <WhatsAppLink text="Hi, please send me your price list." variant="secondary">
             Ask on WhatsApp
           </WhatsAppLink>

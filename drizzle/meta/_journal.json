@@ -50,6 +50,13 @@
       "when": 1795361425249,
       "tag": "0006_email_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795411711710,
+      "tag": "0007_audit_content",
+      "breakpoints": true
     }
   ]
 }

@@ -6,13 +6,17 @@ import PageHead from "@/components/PageHead"
 import { ListingSkeleton } from "@/components/Skeletons"
 import { contentPage, POLICY_SLUGS } from "@/lib/pages"
 
+export const ensureStatic = "navigation"
+
 export function generateStaticParams() {
   return POLICY_SLUGS.map((slug) => ({ slug }))
 }
 
 export async function generateMetadata({ params }: PageProps<"/pages/[slug]">): Promise<Metadata> {
   const page = await contentPage((await params).slug)
-  return page ? { title: page.title, alternates: { canonical: `/pages/${page.slug}` } } : {}
+  if (!page) return { title: "Page not found" }
+  const lead = page.body.split("\n").find((l) => l.trim() && !l.startsWith("#") && !l.startsWith("-")) ?? page.title
+  return { title: page.title, description: lead.replace(/[*_[\]]/g, "").replace(/\(\S+\)/g, "").trim().slice(0, 160), alternates: { canonical: `/pages/${page.slug}` } }
 }
 
 export default function ContentRoute({ params }: PageProps<"/pages/[slug]">) {

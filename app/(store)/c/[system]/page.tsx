@@ -7,6 +7,8 @@ import { ListingSkeleton } from "@/components/Skeletons"
 import { breadcrumbs, itemList, jsonLd } from "@/lib/jsonld"
 import { catalog } from "@/lib/storefront"
 
+export const ensureStatic = "navigation"
+
 export async function generateStaticParams() {
   const { systems } = await catalog()
   return systems.map((s) => ({ system: s.slug }))
@@ -20,9 +22,9 @@ async function load(slug: string) {
 
 export async function generateMetadata({ params }: PageProps<"/c/[system]">): Promise<Metadata> {
   const found = await load((await params).system)
-  if (!found) return {}
+  if (!found) return { title: "Page not found" }
   return {
-    title: `${found.system.name} for electric scooters | WS Green, Mumbai`,
+    title: `${found.system.name} for electric scooters in Mumbai`,
     description: `${found.system.name}: ${String(found.system.count)} parts with counter prices. Pick up at Gulab Auto Garage, Malad West, Mumbai.`,
     alternates: { canonical: `/c/${found.system.slug}` },
   }
@@ -44,7 +46,7 @@ async function Content({ params }: { params: PageProps<"/c/[system]">["params"] 
   const { data, system } = found
   const groups = data.categories
     .filter((c) => c.systemId === system.id)
-    .map((c) => ({ slug: c.slug, name: c.name, tiles: data.tiles.filter((t) => t.categoryId === c.id) }))
+    .map((c) => ({ slug: c.slug, name: c.name, href: `/c/${system.slug}/${c.slug}`, tiles: data.tiles.filter((t) => t.categoryId === c.id) }))
     .filter((g) => g.tiles.length > 0)
   const buyable = groups.some((g) => g.tiles.some((t) => t.purchasable))
   return (

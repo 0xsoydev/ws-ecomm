@@ -3,7 +3,7 @@
 import { Minus, Plus, Trash } from "lucide-react"
 import { AnimatePresence, m, useReducedMotion } from "motion/react"
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react"
-import { announceAdd, qtyOf, setQty, useCart } from "@/lib/cart"
+import { announceAdd, qtyOf, setQty, useQty } from "@/lib/cart"
 import { MAX_LINE_QTY, minQty, type Priced } from "@/lib/pricing"
 
 const HOLD_DELAY = 400
@@ -19,7 +19,7 @@ export function validQty(priced: Priced, typed: number) {
 }
 
 export default function AddButton({ id, priced, name, size }: { id: number; priced: Priced; name: string; size: "card" | "row" }) {
-  const qty = useCart().find((l) => l.id === id)?.qty ?? 0
+  const qty = useQty(id)
   const open = qty > 0
   const min = minQty(priced)
   const reduce = Boolean(useReducedMotion())
@@ -118,7 +118,7 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
 
   const fade = reduce ? { duration: 0 } : { duration: 0.2, ease: EASE }
   const sideButton =
-    "flex h-full items-center justify-center text-current outline-none transition-colors duration-150 ease-out [@media(hover:hover)]:hover:bg-current/10 active:bg-current/15 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current"
+    "flex h-full items-center justify-center text-current outline-hidden transition-colors duration-150 ease-out [@media(hover:hover)]:hover:bg-current/10 active:bg-current/15 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-current"
 
   const stepper = (
     <m.div
@@ -152,7 +152,7 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
         inputMode="numeric"
         pattern="[0-9]*"
         enterKeyHint="done"
-        className="w-full min-w-0 bg-transparent text-center font-semibold text-current outline-none [appearance:textfield] focus-visible:bg-current/10"
+        className="w-full min-w-0 bg-transparent text-center font-semibold text-current outline-hidden [appearance:textfield] focus-visible:bg-current/10"
         value={draft ?? String(qty)}
         onFocus={(e) => {
           setDraft(String(qty))
@@ -188,7 +188,7 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
       ref={addRef}
       type="button"
       aria-label={`Add ${name} to cart`}
-      className="flex h-full w-full items-center justify-center gap-1.5 rounded-control font-semibold outline-none transition-[background-color,transform] duration-150 ease-out active:scale-[0.96] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current [@media(hover:hover)]:hover:bg-current/10"
+      className="flex h-full w-full items-center justify-center gap-1.5 rounded-control font-semibold outline-hidden transition-[background-color,transform] duration-150 ease-out active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-current [@media(hover:hover)]:hover:bg-current/10"
       onClick={add}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}

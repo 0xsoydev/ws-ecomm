@@ -78,7 +78,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<ReactNode>(null)
   const [delivery, setDelivery] = useState<"pickup" | "ship">(courier ? "ship" : "pickup")
-  const [payment, setPayment] = useState<"pay_at_store" | "upi_manual">("upi_manual")
+  const [payment, setPayment] = useState<"pay_at_store" | "upi_manual">("pay_at_store")
 
   if (lines.length === 0) {
     return (
@@ -114,6 +114,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
       return []
     }
   })
+  const dropped = lines.filter((l) => !priced.some((p) => p.line.id === l.id)).map((l) => byId.get(l.id)?.name ?? "A part that is no longer listed")
   const itemsPaise = priced.reduce((s, p) => s + p.unitPaise * p.line.qty, 0)
   const pickupOnly = priced.filter((p) => p.tile.pickupOnly)
   const shipBlocked = !courier || pickupOnly.length > 0
@@ -160,7 +161,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
       if (result.ok) {
         writeStored(SAVED, remember ? JSON.stringify({ name: payload.name, phone: payload.phone, email: payload.email, line1: payload.line1, line2: payload.line2, landmark: payload.landmark, city: payload.city, pincode: payload.pincode }) : null)
         clearCart()
-        router.push(`/order/${result.number}`)
+        router.replace(`/order/${result.number}`)
         return
       }
       if (result.kind === "fields") {
@@ -215,6 +216,10 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
               <input id="co-phone" name="phone" type="tel" inputMode="numeric" autoComplete="tel-national" required defaultValue={saved?.phone} maxLength={14} className={`${field} rounded-l-none`} {...described("phone")} />
             </div>
           </Field>
+          <label className="-mt-1 flex min-h-11 items-start gap-3 text-sm">
+            <input type="checkbox" name="updates" className="mt-0.5 size-5 shrink-0 accent-(--ink)" />
+            Send me order updates on this number on WhatsApp
+          </label>
           <Field id="co-name" label="Name" error={err("name")}>
             <input id="co-name" name="name" autoComplete="name" required defaultValue={saved?.name} className={field} {...described("name")} />
           </Field>
@@ -276,7 +281,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
           ) : null}
         </fieldset>
 
-        <fieldset className="flex flex-col gap-3">
+        <fieldset className="flex flex-col gap-3" aria-describedby={err("payment") ? "co-payment-error" : undefined}>
           <legend className="mb-4 text-lg font-semibold">Payment</legend>
           {mode === "ship" ? (
             <p className="rounded-control border border-line-strong p-4 text-sm">
@@ -309,7 +314,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
               />
             </>
           )}
-          {err("payment") ? <p className="text-sm text-danger">{err("payment")}</p> : null}
+          {err("payment") ? <p id="co-payment-error" className="text-sm text-danger">{err("payment")}</p> : null}
         </fieldset>
 
         <Field id="co-note" label="Note for the shop (optional)">
@@ -319,6 +324,14 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
 
       <aside className="flex flex-col gap-4 rounded-container border border-line bg-surface p-4 lg:sticky lg:top-[calc(var(--header-h)+24px)]">
         <h2 className="text-lg">Order summary</h2>
+        {dropped.length ? (
+          <p role="status" className="rounded-control border border-line-strong p-3 text-sm">
+            Not in this order: {dropped.join(", ")}. {dropped.length === 1 ? "It is" : "They are"} no longer available at the quantity in your cart.{" "}
+            <Link href="/cart" className="font-semibold">
+              Check your cart
+            </Link>
+          </p>
+        ) : null}
         <ul className="flex flex-col gap-3">
           {priced.map(({ line, tile, unitPaise }) => (
             <SummaryLine key={line.id} tile={tile} qty={line.qty} unitPaise={unitPaise} />
@@ -341,11 +354,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
             </dd>
           </div>
         </dl>
-        <p className="text-xs text-muted">Price inclusive of all charges. We confirm within 1 hour (9 am to 10 pm) on WhatsApp or by phone.</p>
-        <label className="flex min-h-11 items-start gap-3 text-sm">
-          <input type="checkbox" name="updates" className="mt-0.5 size-5 shrink-0 accent-(--ink)" />
-          Send me order updates on WhatsApp
-        </label>
+        <p className="text-xs text-muted">Prices include all taxes. We confirm on WhatsApp or by phone, 9 am to 10 pm.</p>
         <label className="flex min-h-11 items-start gap-3 text-sm">
           <input type="checkbox" name="remember" defaultChecked={saved !== null} className="mt-0.5 size-5 shrink-0 accent-(--ink)" />
           Remember my details on this phone
@@ -356,12 +365,10 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
           </p>
         ) : null}
         {belowMinimum ? <p className="text-sm text-danger">The minimum order is {formatPaise(minOrderPaise)}. Add {formatPaise(minOrderPaise - itemsPaise)} more.</p> : null}
-        <div data-bar="send" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:static lg:border-0 lg:p-0">
-          <button type="submit" disabled={pending || belowMinimum} className={`${button.big} w-full`}>
-            {pending ? <LoaderCircle aria-hidden className="size-5 animate-spin" strokeWidth={2} /> : null}
-            {pending ? "Placing order" : `Place order, ${formatPaise(totalPaise)}`}
-          </button>
-        </div>
+        <button type="submit" disabled={pending || belowMinimum || priced.length === 0} className={`${button.big} w-full`}>
+          {pending ? <LoaderCircle aria-hidden className="size-5 animate-spin" strokeWidth={2} /> : null}
+          {pending ? "Placing order" : `Place order, ${formatPaise(totalPaise)}`}
+        </button>
         <p className="text-xs text-muted">
           By placing this order you agree to our{" "}
           <Link href="/pages/terms" className="text-ink">

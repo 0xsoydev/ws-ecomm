@@ -11,3 +11,8 @@ attachDatabasePool(pool)
 
 export const schema = { ...appSchema, ...authSchema }
 export const db = drizzle({ client: pool, schema, casing: "snake_case" })
+
+export function violated(e: unknown) {
+  const cause = e instanceof Error ? e.cause : null
+  return typeof cause === "object" && cause !== null && "constraint" in cause && typeof cause.constraint === "string" ? cause.constraint : null
+}

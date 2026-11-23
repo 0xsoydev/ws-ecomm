@@ -213,7 +213,7 @@ export default function CartView({ scope, minOrderPaise, rates }: { scope: strin
                       </button>
                     ) : null}
                     <div className="mt-auto flex items-center justify-between gap-3 pt-1">
-                      <AddButton id={line.id} priced={tile.priced} name={tile.code ?? tile.name} size="row" />
+                      <AddButton id={line.id} priced={tile.priced} name={tile.name} size="row" />
                       <NumberFlow value={(unit * line.qty) / 100} locales="en-IN" format={rupees} className="font-semibold" />
                     </div>
                   </div>

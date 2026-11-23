@@ -1,4 +1,5 @@
 import { formatPaise, unitWord } from "./format"
+import { codeMissing } from "./search"
 import type { orderStage } from "./schema"
 
 export type Stage = (typeof orderStage.enumValues)[number]
@@ -51,7 +52,7 @@ export function isMaharashtraPincode(pin: string) {
 export type MessageLine = { name: string; code: string | null; qty: number; unit: string; unitPaise: number; tier: "retail" | "wholesale"; hasRetail: boolean }
 
 export function orderMessage(o: { number: string; lines: readonly MessageLine[]; itemsPaise: number; chargesPaise: number; deliveryPending: boolean; name: string; delivery: "pickup" | "ship"; pincode: string | null; link: string }) {
-  const rows = o.lines.map((l) => `${String(l.qty)} ${unitWord(l.unit, l.qty)} ${l.name}${l.code && !l.name.includes(l.code) ? ` (${l.code})` : ""}, ${formatPaise(l.unitPaise)} / ${unitWord(l.unit, 1)}${l.hasRetail && l.tier === "wholesale" ? ", wholesale" : ""} = ${formatPaise(l.unitPaise * l.qty)}`)
+  const rows = o.lines.map((l) => `${String(l.qty)} ${unitWord(l.unit, l.qty)} ${l.name}${codeMissing(l.name, l.code) ? ` (${l.code})` : ""}, ${formatPaise(l.unitPaise)} / ${unitWord(l.unit, 1)}${l.hasRetail && l.tier === "wholesale" ? ", wholesale" : ""} = ${formatPaise(l.unitPaise * l.qty)}`)
   const totals = o.deliveryPending ? `Items ${formatPaise(o.itemsPaise)}, delivery charge to be confirmed` : `Items ${formatPaise(o.itemsPaise)}${o.chargesPaise ? `, delivery ${formatPaise(o.chargesPaise)}` : ""}, total ${formatPaise(o.itemsPaise + o.chargesPaise)}`
   const who = o.delivery === "pickup" ? `${o.name}, pickup at the shop` : `${o.name}, courier to ${o.pincode ?? ""}`
   return [`Order ${o.number}`, ...rows, totals, who, `Link: ${o.link}`].join("\n")

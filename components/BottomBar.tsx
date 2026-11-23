@@ -30,7 +30,7 @@ function CartBar() {
       loadSnapshot().then(
         (d) => {
           const tile = d.tiles.find((t) => t.id === id)
-          setAdded(tile ? (tile.code ?? tile.name) : "part")
+          setAdded(tile ? tile.name : "part")
           clearTimeout(timer)
           timer = setTimeout(() => {
             setAdded(null)
@@ -62,18 +62,15 @@ function CartBar() {
   const t = reduce ? { duration: 0 } : { duration: 0.3, ease: EASE }
 
   return (
-    <m.div
+    <div
       data-bar="cart"
-      layout
-      transition={t}
       className="fixed inset-x-3 bottom-[calc(64px+env(safe-area-inset-bottom))] z-30 overflow-hidden rounded-container border border-line-strong bg-surface shadow-[0_10px_30px_-14px_rgb(21_25_22/0.45)] lg:hidden"
     >
-      <Link href="/cart" className="flex flex-col px-4 no-underline" aria-label={`View cart, ${items}${data ? `, ${String(total / 100)} rupees` : ""}`}>
+      <Link href="/cart" className="flex flex-col px-4 no-underline">
         <AnimatePresence initial={false}>
           {added ? (
             <m.span
               key="added"
-              layout="position"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4, transition: { duration: reduce ? 0 : 0.22 } }}
@@ -84,7 +81,7 @@ function CartBar() {
             </m.span>
           ) : null}
         </AnimatePresence>
-        <m.span layout="position" transition={t} className="flex h-13 items-center gap-3">
+        <span className="flex h-13 items-center gap-3">
           <span className="text-sm text-muted">{items}</span>
           {data ? (
             <NumberFlow value={total / 100} locales="en-IN" format={{ style: "currency", currency: "INR", maximumFractionDigits: 2, minimumFractionDigits: 0 }} className="font-semibold" />
@@ -93,12 +90,12 @@ function CartBar() {
             View cart
             <ChevronRight aria-hidden className="size-4" strokeWidth={2} />
           </span>
-        </m.span>
+        </span>
       </Link>
       <span aria-live="polite" className="sr-only">
         {added ? `${added} added. ${items} in cart` : ""}
       </span>
-    </m.div>
+    </div>
   )
 }
 
@@ -136,12 +133,13 @@ export function BottomBarView({ pathname, systems }: { pathname: string | null; 
             </Link>
           </li>
           <li className="flex flex-1">
-            <Link href="/cart" className={`${tab} ${state(false)} relative`} aria-label={count ? `Cart, ${String(count)} items` : "Cart"}>
+            <Link href="/cart" className={`${tab} ${state(false)} relative`}>
               <span className="relative">
                 <ShoppingBag aria-hidden className="size-5.5" strokeWidth={1.5} />
                 {count ? (
                   <span className="absolute -top-1.5 -right-2.5 min-w-4.5 rounded-full border border-ink bg-accent px-1 text-center text-[11px] leading-4 font-semibold text-on-accent">
                     <NumberFlow value={count} />
+                    <span className="sr-only"> {count === 1 ? "item in" : "items in"}</span>
                   </span>
                 ) : null}
               </span>

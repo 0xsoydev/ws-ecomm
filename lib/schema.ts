@@ -30,7 +30,7 @@ export const ticketStatus = pgEnum("ticket_status", ["open", "acknowledged", "re
 export const ticketKind = pgEnum("ticket_kind", ["grievance", "data_request"])
 export const razorpayKind = pgEnum("razorpay_kind", ["order", "payment_link"])
 export const ackChannel = pgEnum("ack_channel", ["email", "whatsapp", "sms", "phone"])
-export const auditAction = pgEnum("audit_action", ["price", "delete", "archive", "role", "settings", "refund", "export", "page", "utr_recorded", "cash_handover", "data_request"])
+export const auditAction = pgEnum("audit_action", ["price", "delete", "archive", "role", "settings", "refund", "export", "page", "utr_recorded", "cash_handover", "data_request", "content"])
 
 export const specsSchema = z.record(z.string().min(1).max(60), z.string().min(1).max(200))
 export const addressSchema = z.object({ name: z.string().min(2).max(80), phone: z.string().regex(/^[6-9]\d{9}$/), line1: z.string().min(3).max(120), line2: z.string().max(120), landmark: z.string().max(80), city: z.string().min(2).max(60), state: z.string().min(2).max(40), stateCode: z.string().regex(/^\d{2}$/), pincode: z.string().regex(/^\d{6}$/) })

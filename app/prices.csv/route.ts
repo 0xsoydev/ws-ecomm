@@ -10,9 +10,7 @@ function cell(value: string | number) {
 export async function GET() {
   const { tiles, systems } = await catalog()
   const system = new Map(systems.map((s) => [s.slug, s.name]))
-  const rows = tiles
-    .filter((t) => t.approved)
-    .map((t) => [
+  const rows = tiles.map((t) => [
       t.code ?? "",
       t.name,
       system.get(t.systemSlug) ?? "",

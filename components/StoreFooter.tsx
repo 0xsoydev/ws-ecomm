@@ -30,8 +30,8 @@ const link = "no-underline transition-colors duration-150 ease-out [@media(hover
 export default function StoreFooter({ info }: { info: Info }) {
   return (
     <footer className="mt-16 border-t border-line pb-[calc(var(--chrome-b)+24px)] text-sm text-muted">
-      <div className="mx-auto grid max-w-[1200px] gap-10 px-4 pt-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.5fr_1fr_1fr]">
-        <div className="flex flex-col gap-3">
+      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-x-6 gap-y-8 px-4 pt-10 sm:px-6 lg:grid-cols-[1.5fr_1fr_1fr] lg:gap-10">
+        <div className="col-span-2 flex flex-col gap-3 lg:col-span-1">
           <Logo className="h-4 w-auto self-start" />
           <p className="text-ink">
             Sold by {info.legalName} ({BUSINESS.brand})

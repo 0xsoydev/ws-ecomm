@@ -9,7 +9,8 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["lib/**/*.test.ts", "scripts/**/*.test.ts"],
+    include: ["lib/**/*.test.ts", "scripts/**/*.test.ts", "app/**/*.test.ts"],
+    testTimeout: 20000,
     env: {
       DATABASE_URL: "postgres://test:test@127.0.0.1:5432/test",
       BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret-00",

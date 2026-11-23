@@ -36,7 +36,7 @@ export default function ProductCard({ tile, sizes = CARD_SIZES }: { tile: Tile; 
           <span className="min-h-[1lh] text-xs text-muted">{copy.sub}</span>
         </p>
         {tile.purchasable ? (
-          <AddButton id={tile.id} priced={tile.priced} name={tile.code ?? tile.name} size="card" />
+          <AddButton id={tile.id} priced={tile.priced} name={tile.name} size="card" />
         ) : (
           <a
             href={waLink(askAboutPart(tile.code, tile.name, `${publicEnv.NEXT_PUBLIC_SITE_URL}/p/${tile.slug}`))}

@@ -5,6 +5,7 @@ import type { Metadata } from "next"
 import { cookies } from "next/headers"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { connection } from "next/server"
 import { Suspense } from "react"
 import Placeholder from "@/components/Placeholder"
 import ProductImage from "@/components/ProductImage"
@@ -16,7 +17,8 @@ import { publicEnv } from "@/lib/env.public"
 import { formatPaise, unitWord } from "@/lib/format"
 import { orderId, orderMessage, orderNumber, STAGE_LABEL } from "@/lib/orders"
 import { orderItems, orders, products, shipments } from "@/lib/schema"
-import { catalog } from "@/lib/storefront"
+import { catalog, storeInfo } from "@/lib/storefront"
+import { storeStatus } from "@/lib/time"
 import { button } from "@/lib/ui"
 import { telLink, waLink } from "@/lib/whatsapp"
 
@@ -42,17 +44,18 @@ function matches(secret: string | undefined, hash: string | null) {
 const METHOD = { pay_at_store: "Pay at the shop, cash or UPI", upi_manual: "UPI after we confirm", cash_on_local_delivery: "Cash on delivery", cod_courier: "Cash on delivery", razorpay: "Paid online", payment_link: "Payment link" } as const
 
 async function Content({ params }: { params: PageProps<"/order/[number]">["params"] }) {
+  await connection()
+  const jar = await cookies()
   const { number } = await params
   const id = orderId(number)
   if (id === null) notFound()
-  const jar = await cookies()
   const [order] = await db.select().from(orders).where(eq(orders.id, id))
   if (!order) notFound()
   if (!matches(jar.get(`ws_order_${String(id)}`)?.value, order.cookieHash)) {
     return (
       <div className="flex flex-col items-start gap-4 py-12">
         <h1 className="text-2xl">Order {orderNumber(id)}</h1>
-        <p className="max-w-[56ch] text-muted">This order can only be opened on the phone it was placed from. Ask us on WhatsApp for its status.</p>
+        <p className="max-w-[56ch] text-muted">For your privacy, order details open only in the browser the order was placed from. Ask us on WhatsApp for its status and we reply with the details.</p>
         <a href={waLink(`Hi, what is the status of order ${orderNumber(id)}?`)} target="_blank" rel="noopener" className={`${button.ink} no-underline`}>
           <WhatsAppIcon className="size-4.5" />
           Ask on WhatsApp
@@ -61,11 +64,13 @@ async function Content({ params }: { params: PageProps<"/order/[number]">["param
     )
   }
 
-  const [items, [shipment], data] = await Promise.all([
+  const [items, [shipment], data, info] = await Promise.all([
     db.select({ item: orderItems, slug: products.slug }).from(orderItems).innerJoin(products, eq(products.id, orderItems.productId)).where(eq(orderItems.orderId, id)).orderBy(asc(orderItems.id)),
     db.select().from(shipments).where(eq(shipments.orderId, id)).orderBy(desc(shipments.createdAt)).limit(1),
     catalog(),
+    storeInfo(),
   ])
+  const status = storeStatus(new Date(), info.weeklyHours, info.specialHours)
   const tiles = new Map(data.tiles.map((t) => [t.id, t]))
   const contact = "name" in order.contact ? order.contact : null
   const ship = order.shipTo && "line1" in order.shipTo ? order.shipTo : null
@@ -96,16 +101,15 @@ async function Content({ params }: { params: PageProps<"/order/[number]">["param
       {waiting ? (
         <section aria-labelledby="send" className="flex flex-col gap-4 rounded-container border border-line bg-surface p-5">
           <h2 id="send" className="text-lg">
-            Your order is saved. Send it on WhatsApp so we can confirm.
+            We have your order. Next, we check the parts and confirm.
           </h2>
           <ol className="flex flex-col gap-2 text-sm text-muted">
-            <li>1. Send the order to our WhatsApp.</li>
-            <li>2. We check stock and confirm within 1 hour, 9 am to 10 pm.</li>
-            <li>3. {order.delivery === "pickup" ? "Pick it up at the shop" : "Pay by UPI, then we ship it"}{order.method === "pay_at_store" ? " and pay there." : "."}</li>
+            <li>1. {status.tone === "closed" ? `The shop is closed now (${status.text.replace(/^Closed(?: today)?, /, "")}). We confirm on WhatsApp or by phone after we open.` : "We confirm on WhatsApp or by phone, usually within an hour."}</li>
+            <li>2. {order.delivery === "pickup" ? "Pick it up at the shop" : "Pay by UPI, then we ship it"}{order.method === "pay_at_store" ? " and pay there." : "."}</li>
           </ol>
           <a href={waLink(message)} target="_blank" rel="noopener" className={`${button.big} w-full no-underline`}>
             <WhatsAppIcon className="size-5" />
-            Send order on WhatsApp
+            Send it on WhatsApp for a faster reply
           </a>
           <p className="flex items-center gap-1.5 text-sm text-muted">
             <Phone aria-hidden className="size-4" strokeWidth={1.75} />
@@ -210,12 +214,17 @@ async function Content({ params }: { params: PageProps<"/order/[number]">["param
         </div>
       </section>
 
-      <p className="text-sm text-muted">
-        Questions about this order?{" "}
-        <a href={waLink(`Hi, I have a question about order ${num}.`)} target="_blank" rel="noopener" className="font-medium text-ink">
-          Ask on WhatsApp
-        </a>
-      </p>
+      <div className="flex flex-col items-start gap-4 border-t border-line pt-6">
+        <p className="text-sm text-muted">
+          Questions about this order?{" "}
+          <a href={waLink(`Hi, I have a question about order ${num}.`)} target="_blank" rel="noopener" className="font-medium text-ink">
+            Ask on WhatsApp
+          </a>
+        </p>
+        <Link href="/" className={`${button.secondary} no-underline`}>
+          Continue shopping
+        </Link>
+      </div>
     </div>
   )
 }

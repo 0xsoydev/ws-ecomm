@@ -1,15 +1,19 @@
 "use server"
 
 import { createHash, createHmac, randomBytes } from "node:crypto"
-import { and, eq, gte, inArray, sql } from "drizzle-orm"
+import { and, count, eq, gt, gte, inArray, sql } from "drizzle-orm"
 import { cookies, headers } from "next/headers"
 import { updateTag } from "next/cache"
+import { after } from "next/server"
 import { z } from "zod"
-import { db } from "@/lib/db"
+import { BUSINESS } from "@/lib/business"
+import { db, violated } from "@/lib/db"
 import { courierFee } from "@/lib/delivery"
+import { emailConfigured, sendEmail } from "@/lib/email"
+import { publicEnv } from "@/lib/env.public"
 import { env } from "@/lib/env"
 import { collectsTax, regimeAt } from "@/lib/gst"
-import { isMaharashtraPincode, orderNumber } from "@/lib/orders"
+import { isMaharashtraPincode, orderMessage, orderNumber } from "@/lib/orders"
 import { unitPrice } from "@/lib/pricing"
 import { withinLimit } from "@/lib/ratelimit"
 import { customers, orderCharges, orderEvents, orderItems, orders, products, stockMovements, units } from "@/lib/schema"
@@ -69,7 +73,7 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
   }
   const v = parsed.data
   const h = await headers()
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null
+  const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null
   const phoneHash = createHmac("sha256", env.PHONE_PEPPER).update(v.phone).digest("hex")
   const requestHash = createHash("sha256").update(JSON.stringify({ ...v, idempotencyKey: undefined })).digest("hex")
 
@@ -78,8 +82,15 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
     return existing.requestHash === requestHash ? { ok: true, number: orderNumber(existing.id) } : { ok: false, kind: "message", message: "This order was already placed. Refresh the page to start a new one." }
   }
 
-  const [phoneOk, ipOk] = await Promise.all([withinLimit(`order:phone:${phoneHash}`, 3600, 5), ip ? withinLimit(`order:ip:${ip}`, 600, 10) : Promise.resolve(true)])
-  if (!phoneOk || !ipOk) return { ok: false, kind: "message", message: "Too many orders in a short time. Wait a few minutes, or order on WhatsApp." }
+  const [[recent], ipOk] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(orders)
+      .innerJoin(customers, eq(customers.id, orders.customerId))
+      .where(and(eq(customers.phoneHash, phoneHash), gt(orders.createdAt, sql`now() - interval '1 hour'`))),
+    ip ? withinLimit(`order:ip:${ip}`, 600, 30) : Promise.resolve(true),
+  ])
+  if ((recent?.n ?? 0) >= 5 || !ipOk) return { ok: false, kind: "message", message: "Too many orders in a short time. Wait a few minutes, or order on WhatsApp." }
 
   const [settings, regime] = await Promise.all([getSettings(), regimeAt(todayInIndia())])
   if (collectsTax(regime.scheme)) return { ok: false, kind: "message", message: "Online orders are paused for a moment. Order on WhatsApp." }
@@ -91,7 +102,7 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
 
   const secret = randomBytes(32).toString("base64url")
   try {
-    const id = await db.transaction(async (tx) => {
+    const placed = await db.transaction(async (tx) => {
       const rows = await tx
         .select({ product: products, uqc: units.uqc })
         .from(products)
@@ -139,7 +150,7 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
       const [customer] = await tx
         .insert(customers)
         .values({ phone: v.phone, phoneHash, firstName: v.name.split(" ")[0] ?? v.name })
-        .onConflictDoUpdate({ target: customers.phoneHash, set: { phone: v.phone, firstName: v.name.split(" ")[0] ?? v.name } })
+        .onConflictDoUpdate({ target: customers.phoneHash, set: { phone: v.phone } })
         .returning({ id: customers.id })
       if (!customer) throw new Error("customer insert failed")
 
@@ -199,17 +210,30 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
       const reserved = priced.filter((l) => l.row.product.stock !== null)
       if (reserved.length) await tx.insert(stockMovements).values(reserved.map((l) => ({ productId: l.row.product.id, delta: -l.qty, reason: "sold_online" as const, orderId: order.id })))
       await tx.insert(orderEvents).values({ orderId: order.id, type: "placed", data: { delivery: v.delivery, method: v.payment, items: itemsPaise } })
-      return order.id
+      const text = orderMessage({
+        number: orderNumber(order.id),
+        lines: priced.map((l) => ({ name: l.row.product.name, code: l.row.product.partCode, qty: l.qty, unit: l.row.product.unit, unitPaise: l.price.paise, tier: l.price.tier, hasRetail: l.row.product.retailPaise !== null })),
+        itemsPaise,
+        chargesPaise: fee ?? 0,
+        deliveryPending: fee === null,
+        name: `${v.name}, +91 ${v.phone}`,
+        delivery: v.delivery,
+        pincode: v.delivery === "ship" ? v.pincode : null,
+        link: `${publicEnv.NEXT_PUBLIC_SITE_URL}/admin/orders/${String(order.id)}`,
+      })
+      return { id: order.id, text, tracked: reserved.map((l) => l.row.product.id) }
     })
+    const { id } = placed
+    if (emailConfigured) after(() => sendEmail({ to: BUSINESS.email, subject: `New order ${orderNumber(id)} from ${v.name}`, text: `${placed.text}${v.note ? `\nNote: ${v.note}` : ""}` }))
 
     const jar = await cookies()
     jar.set(`ws_order_${String(id)}`, secret, { httpOnly: true, sameSite: "lax", secure: env.NODE_ENV === "production", path: `/order/${orderNumber(id)}`, maxAge: 30 * 24 * 3600 })
-    for (const pid of ids) updateTag(`product:${String(pid)}`)
-    updateTag("catalog")
+    for (const pid of placed.tracked) updateTag(`product:${String(pid)}`)
+    if (placed.tracked.length) updateTag("catalog")
     return { ok: true, number: orderNumber(id) }
   } catch (e) {
     if (e instanceof Refusal) return e.result
-    if (e instanceof Error && /orders_idempotency_key/.test(e.message)) {
+    if (violated(e) === "orders_idempotencyKey_unique") {
       const [again] = await db.select({ id: orders.id }).from(orders).where(eq(orders.idempotencyKey, v.idempotencyKey))
       if (again) return { ok: true, number: orderNumber(again.id) }
     }

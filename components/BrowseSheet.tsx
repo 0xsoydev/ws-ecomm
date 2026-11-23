@@ -4,6 +4,7 @@ import { ChevronRight, ListOrdered, Scooter, Store, Warehouse } from "lucide-rea
 import Link from "next/link"
 import Sheet from "./Sheet"
 import SystemIcon from "./SystemIcon"
+import { partsCount } from "@/lib/format"
 
 export type BrowseSystem = { slug: string; name: string; shortName: string; count: number }
 
@@ -26,7 +27,7 @@ export default function BrowseSheet({ systems, open, onOpenChange }: { systems: 
               <Link href={`/c/${s.slug}`} onClick={close} className="flex min-h-16 flex-col justify-center gap-0.5 rounded-control border border-line px-3 py-2.5 no-underline transition-colors duration-150 ease-out active:bg-bg [@media(hover:hover)]:hover:bg-bg">
                 <SystemIcon slug={s.slug} className="size-5 text-muted" strokeWidth={1.5} />
                 <span className="leading-tight font-semibold">{s.shortName}</span>
-                <span className="text-xs text-muted">{s.count} parts</span>
+                <span className="text-xs text-muted">{partsCount(s.count)}</span>
               </Link>
             </li>
           )

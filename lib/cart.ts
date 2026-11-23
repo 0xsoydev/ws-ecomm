@@ -57,6 +57,14 @@ export function useCart() {
   return useSyncExternalStore(subscribe, load, () => none)
 }
 
+export function useQty(id: number) {
+  return useSyncExternalStore(
+    subscribe,
+    () => qtyOf(id),
+    () => 0,
+  )
+}
+
 export function setQty(id: number, qty: number) {
   const current = load()
   if (qty <= 0) {

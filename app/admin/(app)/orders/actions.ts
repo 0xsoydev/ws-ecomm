@@ -4,7 +4,7 @@ import { and, eq, sql } from "drizzle-orm"
 import { refresh, updateTag } from "next/cache"
 import { z } from "zod"
 import { requireRole } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { db, violated } from "@/lib/db"
 import { next, type Stage } from "@/lib/orders"
 import { auditLog, orderCharges, orderEvents, orderItems, orders, orderStage, payments, products, shipments, stockMovements } from "@/lib/schema"
 
@@ -29,16 +29,20 @@ async function move(tx: Tx, id: number, from: Stage, to: Stage, actorId: string,
   await tx.insert(orderEvents).values({ orderId: id, type: "stage", actorId, data: { from, to, ...data } })
 }
 
-async function run(work: (tx: Tx, actorId: string) => Promise<number[] | undefined>): Promise<ActionResult> {
+async function run<T>(schema: z.ZodType<T>, raw: unknown, work: (tx: Tx, actorId: string, v: T) => Promise<number[] | undefined>): Promise<ActionResult> {
   const session = await requireRole("owner", "staff")
+  const parsed = schema.safeParse(raw)
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Check the details" }
+  const v = parsed.data
   try {
-    const touched = await db.transaction((tx) => work(tx, session.user.id))
+    const touched = await db.transaction((tx) => work(tx, session.user.id, v))
     for (const pid of touched ?? []) updateTag(`product:${String(pid)}`)
     if (touched?.length) updateTag("catalog")
     refresh()
     return { ok: true }
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : "Something went wrong" }
+    if (violated(e) === "payment_manual_utr") return { ok: false, message: "This UPI reference was already used." }
+    return { ok: false, message: e instanceof Error && !violated(e) && !e.message.startsWith("Failed query") ? e.message : "Something went wrong. Try again." }
   }
 }
 
@@ -46,8 +50,7 @@ const idSchema = z.number().int().positive()
 const stageSchema = z.enum(orderStage.enumValues)
 
 export async function moveStage(raw: unknown) {
-  const v = z.object({ id: idSchema, from: stageSchema, to: z.enum(["packed", "ready_for_pickup", "shipped", "delivered", "picked_up"]) }).parse(raw)
-  return run(async (tx, actor) => {
+  return run(z.object({ id: idSchema, from: stageSchema, to: z.enum(["packed", "ready_for_pickup", "delivered", "picked_up"]) }), raw, async (tx, actor, v) => {
     const order = await locked(tx, v.id)
     if (order.stage !== v.from) throw new Error("The order changed. Refresh and try again.")
     if ((v.to === "packed" || v.to === "ready_for_pickup") && order.method === "upi_manual" && order.payment !== "paid") throw new Error("Record the UPI payment first.")
@@ -62,8 +65,7 @@ export async function moveStage(raw: unknown) {
 }
 
 export async function confirmOrder(raw: unknown) {
-  const v = z.object({ id: idSchema, deliveryPaise: z.number().int().min(0).max(10000000).nullable() }).parse(raw)
-  return run(async (tx, actor) => {
+  return run(z.object({ id: idSchema, deliveryPaise: z.number().int().min(0).max(10000000).nullable() }), raw, async (tx, actor, v) => {
     const order = await locked(tx, v.id)
     if (order.stage !== "requested" && order.stage !== "quote_pending") throw new Error("Only new orders can be confirmed.")
     if (order.stage === "quote_pending") {
@@ -82,8 +84,7 @@ export async function confirmOrder(raw: unknown) {
 }
 
 export async function cancelOrder(raw: unknown) {
-  const v = z.object({ id: idSchema, reason: z.string().trim().min(3, "Give a reason").max(200) }).parse(raw)
-  return run(async (tx, actor) => {
+  return run(z.object({ id: idSchema, reason: z.string().trim().min(3, "Give a reason").max(200) }), raw, async (tx, actor, v) => {
     const order = await locked(tx, v.id)
     if (!next[order.stage].includes("cancelled")) throw new Error("This order can no longer be cancelled here.")
     if (order.payment !== "unpaid" && order.payment !== "pay_at_store") throw new Error("This order has a payment. Refund it first, then cancel.")
@@ -100,12 +101,11 @@ export async function cancelOrder(raw: unknown) {
 }
 
 export async function recordUpi(raw: unknown) {
-  const v = z.object({ id: idSchema, utr: z.string().trim().regex(/^\d{12}$/, "A UPI reference has 12 digits"), amountPaise: z.number().int().positive() }).safeParse(raw)
-  if (!v.success) return { ok: false, message: v.error.issues[0]?.message ?? "Check the details" } satisfies ActionResult
-  const { id, utr, amountPaise } = v.data
-  return run(async (tx, actor) => {
+  const schema = z.object({ id: idSchema, utr: z.string().trim().regex(/^\d{12}$/, "A UPI reference has 12 digits"), amountPaise: z.number().int().positive() })
+  return run(schema, raw, async (tx, actor, { id, utr, amountPaise }) => {
     const order = await locked(tx, id)
     if (order.method !== "upi_manual") throw new Error("This order is not paid by UPI.")
+    if (order.stage === "cancelled" || order.stage === "requested" || order.stage === "quote_pending") throw new Error("Confirm the order before recording a payment.")
     const [{ paid } = { paid: 0 }] = await tx
       .select({ paid: sql<number>`coalesce(sum(${payments.amountPaise}), 0)::int` })
       .from(payments)
@@ -117,16 +117,12 @@ export async function recordUpi(raw: unknown) {
     await tx.insert(orderEvents).values({ orderId: id, type: "payment", actorId: actor, data: { utr, amount: amountPaise } })
     await tx.insert(auditLog).values({ actorId: actor, entity: "order", entityId: String(id), action: "utr_recorded", diff: { utr: [null, utr], amount: [null, amountPaise] } })
     return undefined
-  }).then((r) => (r.ok || !/payment_manual_utr/.test(r.message) ? r : { ok: false, message: "This UPI reference was already used." }))
+  })
 }
 
 export async function markShipped(raw: unknown) {
-  const v = z
-    .object({ id: idSchema, courier: z.string().trim().min(2, "Enter the courier").max(60), awb: z.string().trim().min(4, "Enter the tracking number").max(40), trackingUrl: z.union([z.literal(""), z.url()]) })
-    .safeParse(raw)
-  if (!v.success) return { ok: false, message: v.error.issues[0]?.message ?? "Check the details" } satisfies ActionResult
-  const { id, courier, awb, trackingUrl } = v.data
-  return run(async (tx, actor) => {
+  const schema = z.object({ id: idSchema, courier: z.string().trim().min(2, "Enter the courier").max(60), awb: z.string().trim().min(4, "Enter the tracking number").max(40), trackingUrl: z.union([z.literal(""), z.url()]) })
+  return run(schema, raw, async (tx, actor, { id, courier, awb, trackingUrl }) => {
     const order = await locked(tx, id)
     if (order.stage !== "packed") throw new Error("Mark the order packed first.")
     await tx.insert(shipments).values({ orderId: id, courier, awb, trackingUrl: trackingUrl || null, status: "shipped" })

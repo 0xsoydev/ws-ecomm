@@ -2,11 +2,10 @@
 
 import NumberFlow from "@number-flow/react"
 import { Check, Minus, Plus, ShoppingBag, Trash } from "lucide-react"
-import { m } from "motion/react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type PointerEvent } from "react"
-import { announceAdd, setQty as setCartQty, useCart } from "@/lib/cart"
+import { announceAdd, setQty as setCartQty, useQty } from "@/lib/cart"
 import { unitWord } from "@/lib/format"
 import { hasRetailTier, MAX_LINE_QTY, minQty, nextBreak, perUnit, unitPrice, type Priced } from "@/lib/pricing"
 import { button } from "@/lib/ui"
@@ -88,7 +87,7 @@ function Stepper({ value, onChange, min, step, name, removable }: { value: numbe
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur()
         }}
-        className="h-full w-full min-w-0 bg-transparent text-center text-lg font-semibold outline-none focus-visible:bg-bg"
+        className="h-full w-full min-w-0 bg-transparent text-center text-lg font-semibold outline-hidden focus-visible:bg-bg"
       />
       <button
         type="button"
@@ -112,7 +111,7 @@ function Stepper({ value, onChange, min, step, name, removable }: { value: numbe
 
 export default function BuyBox({ id, name, priced, unit }: { id: number; name: string; priced: Priced; unit: string }) {
   const min = minQty(priced)
-  const inCart = useCart().find((l) => l.id === id)?.qty ?? 0
+  const inCart = useQty(id)
   const [picked, setPicked] = useState(min)
   const qty = inCart || picked
   const setQty = (n: number) => {
@@ -163,9 +162,8 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
                 role="radio"
                 aria-checked={on}
                 onClick={() => { setQty(t.start); }}
-                className={`relative flex flex-col items-start gap-0.5 rounded-control border p-3 text-left transition-[transform] duration-150 ease-out active:scale-[0.98] ${on ? "border-ink text-on-accent" : "border-line-strong bg-surface"}`}
+                className={`relative flex flex-col items-start gap-0.5 rounded-control border p-3 text-left transition-[transform] duration-150 ease-out active:scale-[0.98] ${on ? "border-ink bg-accent/20 shadow-[inset_0_0_0_1px_var(--ink)]" : "border-line-strong bg-surface"}`}
               >
-                {on ? <m.span layoutId={`tier-${String(id)}`} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0 rounded-[7px] bg-accent" /> : null}
                 <span className={`relative text-sm ${on ? "" : "text-muted"}`}>{t.label}</span>
                 <span className="relative text-lg font-semibold">{perUnit(t.paise, unit)}</span>
                 <span className="relative flex h-5 items-center gap-1 text-sm">
@@ -202,7 +200,7 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
         </p>
       </div>
 
-      <p className="min-h-6 text-sm" aria-live="polite">
+      <p className="text-sm empty:-mt-4" aria-live="polite">
         {brk ? (
           <>
             Add {brk.addQty} more for <span className="font-semibold">{perUnit(brk.paise, unit)}</span>
@@ -228,7 +226,7 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
             Add to cart
           </button>
         )}
-        <button type="button" onClick={buyNow} className={inCart ? button.big : button.inkBig}>
+        <button type="button" onClick={buyNow} className={inCart ? button.big : `${button.secondary} h-13 text-lg`}>
           {inCart ? "Checkout" : "Buy now"}
         </button>
       </div>

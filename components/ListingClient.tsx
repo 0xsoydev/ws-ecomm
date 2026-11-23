@@ -5,13 +5,13 @@ import Link from "next/link"
 import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs"
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { applyFilter, BODY_LABELS, BODY_STYLES, facetCounts, SORT_LABELS, SORTS, type BodyStyle, type ListingFilter, type Sort } from "@/lib/listing"
-import type { Tile } from "@/lib/storefront"
+import { applyFilter, BODY_LABELS, BODY_STYLES, facetCounts, SORT_LABELS, SORTS, type BodyStyle, type Filterable, type ListingFilter, type Sort } from "@/lib/listing"
 import { useStored, writeStored } from "@/lib/use-stored"
 import { button, chip } from "@/lib/ui"
+import { partsCount } from "@/lib/format"
 
-export type ListingItem = { tile: Tile; node: ReactNode }
-export type ListingSection = { slug: string; name: string; items: ListingItem[] }
+export type ListingItem = { tile: Filterable & { id: number }; node: ReactNode }
+export type ListingSection = { slug: string; name: string; href?: string; items: ListingItem[] }
 export type VehicleOption = { key: string; id: number; label: string }
 export type ChipLink = { href: string; label: string; active: boolean }
 
@@ -94,12 +94,14 @@ export function ListingView({
           </div>
         </fieldset>
       ) : null}
-      <label className="flex min-h-11 items-center justify-between gap-3">
-        <span className="font-semibold">
-          In stock only <span className="font-normal text-muted">({counts.inStock})</span>
-        </span>
-        <input type="checkbox" checked={filter.stock} onChange={(e) => { set({ stock: e.currentTarget.checked }); }} className="size-5 accent-(--ink)" />
-      </label>
+      {filter.stock || all.some((t) => t.stock.kind === "out") ? (
+        <label className="flex min-h-11 items-center justify-between gap-3">
+          <span className="font-semibold">
+            In stock only <span className="font-normal text-muted">({counts.inStock})</span>
+          </span>
+          <input type="checkbox" checked={filter.stock} onChange={(e) => { set({ stock: e.currentTarget.checked }); }} className="size-5 accent-(--ink)" />
+        </label>
+      ) : null}
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-2 font-semibold">Sort</legend>
         {SORTS.map((s) => (
@@ -133,7 +135,7 @@ export function ListingView({
             Filter and sort{active.length ? ` (${String(active.length)})` : ""}
           </button>
           <p className="text-sm text-muted" aria-live="polite">
-            {counts.total} {counts.total === 1 ? "part" : "parts"}
+            {partsCount(counts.total)}
           </p>
         </div>
         <VehicleOffer vehicles={vehicles} current={vehicle} apply={(key) => { set({ vehicle: key }); }} />
@@ -157,7 +159,7 @@ export function ListingView({
             </button>
           </div>
         ) : null}
-        {shown.map((s) => (s.kept.length ? <Section key={s.slug} slug={s.slug} name={shown.length > 1 ? s.name : null} items={s.kept} /> : null))}
+        {shown.map((s) => (s.kept.length ? <Section key={s.slug} slug={s.slug} name={s.name} href={s.href} hidden={shown.length === 1} items={s.kept} /> : null))}
       </div>
       {opened ? (
       <Sheet
@@ -170,7 +172,7 @@ export function ListingView({
               Clear
             </button>
             <button type="button" onClick={() => { setSheet(false); }} className={`${button.ink} h-12 flex-1`}>
-              Show {counts.total} {counts.total === 1 ? "part" : "parts"}
+              Show {partsCount(counts.total)}
             </button>
           </div>
         }
@@ -182,15 +184,32 @@ export function ListingView({
   )
 }
 
-function Section({ slug, name, items }: { slug: string; name: string | null; items: ListingItem[] }) {
+function Section({ slug, name, href, hidden, items }: { slug: string; name: string; href?: string; hidden: boolean; items: ListingItem[] }) {
+  const count = (
+    <>
+      <span aria-hidden className="text-sm font-normal text-muted">
+        {items.length}
+      </span>
+      <span className="sr-only">
+        ({partsCount(items.length)})
+      </span>
+    </>
+  )
   return (
-    <section id={`s-${slug}`} data-section={slug} aria-label={name ?? undefined} className="scroll-mt-[calc(var(--header-h)+60px)] pt-6 first:pt-2">
-      {name ? (
-        <h2 className="mb-3 flex items-baseline gap-2 text-lg">
-          {name}
-          <span className="text-sm font-normal text-muted">{items.length}</span>
-        </h2>
-      ) : null}
+    <section id={`s-${slug}`} data-section={slug} aria-labelledby={`h-${slug}`} className="scroll-mt-[calc(var(--header-h)+60px)] pt-6 first:pt-2">
+      <h2 id={`h-${slug}`} className={hidden ? "sr-only" : "mb-3 flex items-baseline gap-2 text-lg"}>
+        {href && !hidden ? (
+          <Link href={href as `/c/${string}`} className="flex items-baseline gap-2 no-underline [@media(hover:hover)]:hover:underline">
+            {name}
+            {count}
+          </Link>
+        ) : (
+          <>
+            {name}
+            {count}
+          </>
+        )}
+      </h2>
       <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
         {items.map((i) => (
           <li key={i.tile.id} className="flex">
@@ -224,12 +243,12 @@ function ChipRail({ chips, sections }: { chips: ChipLink[] | "spy"; sections: { 
   const items = chips === "spy" ? sections.map((s) => ({ key: s.slug, label: s.name, href: `#s-${s.slug}`, active: current === s.slug })) : chips.map((c) => ({ key: c.href, label: c.label, href: c.href, active: c.active }))
   if (items.length < 2) return null
   return (
-    <nav aria-label="Categories" className="sticky top-(--header-h) z-20 -mx-4 border-b border-line bg-bg px-4 transition-[top] duration-200 ease-out sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+    <nav aria-label={chips === "spy" ? "Jump to section" : "Subcategories"} className="sticky top-(--header-h) z-20 -mx-4 border-b border-line bg-bg px-4 transition-[top] duration-200 ease-out sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
       <ul className="flex gap-2 overflow-x-auto py-2.5 [scrollbar-width:none]">
         {items.map((c) =>
           chips === "spy" ? (
             <li key={c.key}>
-              <a id={`chip-${c.key}`} href={c.href} aria-current={c.active ? "true" : undefined} className={`${chip(c.active)} h-9 whitespace-nowrap no-underline`}>
+              <a id={`chip-${c.key}`} href={c.href} aria-current={c.active ? "location" : undefined} className={`inline-flex h-9 shrink-0 items-center rounded-full border px-3 text-sm whitespace-nowrap no-underline transition-colors duration-200 ease-out ${c.active ? "border-ink bg-surface font-semibold" : "border-line bg-surface text-muted [@media(hover:hover)]:hover:text-ink"}`}>
                 {c.label}
               </a>
             </li>

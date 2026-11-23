@@ -48,21 +48,23 @@ type ProductInput = {
   name: string
   slug: string
   code: string | null
+  sku: string
   description: string
   maker: string | null
   category: string
   images: readonly { publicId: string }[]
-  listing: { paise: number; qty: number }
+  unitPaise: number
+  minQty: number
   unitCode: string
   inStock: boolean
   pickupOnly: boolean
   fits: readonly string[]
+  specs: readonly [string, string][]
   countryOfOrigin: string | null
 }
 
 export function productNode(p: ProductInput) {
   const cloud = publicEnv.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-  const price = (p.listing.paise / 100).toFixed(2)
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -70,18 +72,19 @@ export function productNode(p: ProductInput) {
     url: `${site}/p/${p.slug}`,
     image: p.images.map((i) => `https://res.cloudinary.com/${cloud}/image/upload/f_auto,q_auto,w_1200/${i.publicId}`),
     description: p.description,
-    sku: p.code ?? undefined,
+    sku: p.sku,
+    mpn: p.code ?? undefined,
     brand: p.maker ? { "@type": "Brand", name: p.maker } : undefined,
     category: p.category,
     countryOfOrigin: p.countryOfOrigin ?? undefined,
+    additionalProperty: p.specs.length ? p.specs.map(([name, value]) => ({ "@type": "PropertyValue", name, value })) : undefined,
     isAccessoryOrSparePartFor: p.fits.length ? p.fits.map((name) => ({ "@type": "Product", name })) : undefined,
     offers: {
       "@type": "Offer",
       url: `${site}/p/${p.slug}`,
       priceCurrency: "INR",
-      ...(p.listing.qty === 1
-        ? { price }
-        : { priceSpecification: { "@type": "UnitPriceSpecification", price, priceCurrency: "INR", referenceQuantity: { "@type": "QuantitativeValue", value: p.listing.qty, unitCode: p.unitCode, valueReference: { "@type": "QuantitativeValue", value: 1, unitCode: p.unitCode } } } }),
+      price: (p.unitPaise / 100).toFixed(2),
+      eligibleQuantity: p.minQty > 1 ? { "@type": "QuantitativeValue", minValue: p.minQty, unitCode: p.unitCode } : undefined,
       itemCondition: "https://schema.org/NewCondition",
       availability: p.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@id": `${site}/#business` },

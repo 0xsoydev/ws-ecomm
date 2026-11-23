@@ -1,5 +1,6 @@
 "use client"
 
+import Logo from "@/components/Logo"
 import { Camera, House, IndianRupee, ListChecks, Package, ReceiptText, Settings } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -48,10 +49,7 @@ export function AdminNavView({ pathname }: { pathname: string | null }) {
         </ul>
       </nav>
       <nav aria-label="Admin" className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-line px-3 py-5 md:flex">
-        <picture className="mb-6 px-3">
-          <source srcSet="/wsgreen_dark.svg" media="(prefers-color-scheme: dark)" />
-          <img src="/wsgreen_light.svg" alt="WS Green admin" width={136} height={14} className="h-3.5 w-auto" />
-        </picture>
+        <Logo className="mb-6 ml-3 h-4 w-auto" />
         <ul className="flex flex-col gap-0.5">
           {[...items, ...desktopOnly].map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href)

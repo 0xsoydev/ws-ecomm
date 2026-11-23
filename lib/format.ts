@@ -17,3 +17,7 @@ const singulars: Record<string, string> = { pcs: "pc", pkg: "pack" }
 export function unitWord(unit: string, qty: number) {
   return qty === 1 ? (singulars[unit] ?? unit) : (plurals[unit] ?? unit)
 }
+
+export function partsCount(n: number) {
+  return `${String(n)} ${n === 1 ? "part" : "parts"}`
+}

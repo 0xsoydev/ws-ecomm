@@ -58,7 +58,7 @@ export default function HeroSearch({ phrases }: { phrases: string[] }) {
   }, [])
 
   return (
-    <form ref={form} id="hero-search" action="/search" role="search" className="corner-ticks -mx-1.5 p-1.5">
+    <form ref={form} id="hero-search" action="/search" role="search" aria-label="Find a part" className="corner-ticks -mx-1.5 p-1.5">
       <div className="flex h-13 items-stretch overflow-hidden rounded-control border border-line-strong bg-surface focus-within:border-ink">
         <label className="relative flex min-w-0 flex-1 items-center">
           <span className="sr-only">Search parts by code, name or vehicle</span>
@@ -71,7 +71,7 @@ export default function HeroSearch({ phrases }: { phrases: string[] }) {
             onChange={(e) => { setValue(e.currentTarget.value); }}
             onFocus={() => { setStopped(true); }}
             onKeyDown={() => { setStopped(true); }}
-            className="peer h-full w-full bg-transparent px-4 text-lg outline-none [&::-webkit-search-cancel-button]:hidden"
+            className="peer h-full w-full bg-transparent px-4 text-lg outline-hidden [&::-webkit-search-cancel-button]:hidden"
           />
           {value === "" ? (
             <span aria-hidden className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-lg text-muted peer-focus:opacity-70">
