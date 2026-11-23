@@ -2,6 +2,7 @@ import "server-only"
 import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
 import { cacheLife, cacheTag } from "next/cache"
 import { isPurchasable } from "./catalog"
+import { FACET_KEYS } from "./listing"
 import { db } from "./db"
 import { deliveryScope } from "./delivery"
 import { env } from "./env"
@@ -32,6 +33,7 @@ export type Tile = {
   systemSlug: string
   bodyStyle: (typeof products.$inferSelect)["bodyStyle"]
   vehicles: { modelId: number; verified: boolean }[]
+  facets: [string, string][]
   terms: string
   context: string
 }
@@ -125,6 +127,7 @@ export async function catalog() {
       systemSlug: system.slug,
       bodyStyle: p.bodyStyle,
       vehicles,
+      facets: p.specsReviewed ? FACET_KEYS.flatMap((k) => (p.specs[k] ? [[k, p.specs[k]] as [string, string]] : [])) : [],
       terms: searchTerms([
         p.partCode,
         p.mpn,

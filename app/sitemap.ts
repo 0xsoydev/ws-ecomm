@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const data = await catalog()
   const system = new Map(data.systems.map((s) => [s.id, s.slug]))
   return [
-    ...["", "/store", "/wholesale", "/service", "/prices", "/v", "/ev-scooters"].map((p) => ({ url: `${site}${p}` })),
+    ...["", "/store", "/wholesale", "/service", "/prices", "/v"].map((p) => ({ url: `${site}${p}` })),
     ...data.systems.map((s) => ({ url: `${site}/c/${s.slug}` })),
     ...data.categories.filter((c) => c.count > 0).map((c) => ({ url: `${site}/c/${system.get(c.systemId) ?? ""}/${c.slug}` })),
     ...data.tiles.filter((t) => t.image).map((t) => ({ url: `${site}/p/${t.slug}` })),

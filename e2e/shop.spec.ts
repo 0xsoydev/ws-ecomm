@@ -43,6 +43,7 @@ test("buying a part at the wholesale break, then checking out by courier with th
 
   await expect(page).toHaveURL(/\/checkout/)
   await expect(page.getByText("₹80 delivery. Pay by UPI once we confirm.").filter({ visible: true })).toBeVisible()
+  await page.getByText("₹80 delivery. Pay by UPI once we confirm.").click()
   await placeOrder(page)
   await expect(page.getByText("Enter a 10-digit mobile number").filter({ visible: true })).toBeVisible()
   await expect(page.locator("#co-phone")).toBeFocused()
@@ -59,7 +60,7 @@ test("buying a part at the wholesale break, then checking out by courier with th
   await placeOrder(page)
 
   await expect(page).toHaveURL(/\/order\/WS\d+/)
-  await expect(page.getByRole("link", { name: "Send it on WhatsApp for a faster reply" })).toHaveAttribute("href", /wa\.me\/919821784847\?text=Order%20WS\d+/)
+  await expect(page.getByRole("link", { name: "Send on WhatsApp" })).toHaveAttribute("href", /wa\.me\/919821784847\?text=Order%20WS\d+/)
   await expect(page.getByText("₹80", { exact: true }).filter({ visible: true })).toBeVisible()
   await expect(page.getByText("₹1,420", { exact: true }).filter({ visible: true })).toBeVisible()
   await page.goBack()

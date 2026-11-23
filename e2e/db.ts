@@ -53,6 +53,7 @@ update settings set data = data || '{"courierAvailable": true, "shippingBands": 
     )
     await db.query(`insert into product_image (product_id, public_id, width, height, position, own_photo, on_white, classified) values ($1, $2, 1000, 1000, 0, true, true, true)`, [i + 1, photo(i)])
   }
+  await db.exec(`update product set specs = jsonb_build_object('Maker', split_part(name, ' ', 1), 'Series cells', split_part(name, ' ', 3)), specs_reviewed = true where category_id = 1`)
   await db.exec(`insert into product_vehicle (product_id, model_id, verified) values (6, 1, true), (7, 1, false);`)
 
   for (const p of policies) await db.query("insert into page (slug, title, body) values ($1, $2, $3)", [p.slug, p.title, p.body])

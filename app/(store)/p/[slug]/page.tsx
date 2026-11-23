@@ -10,6 +10,7 @@ import ProductCard from "@/components/ProductCard"
 import { ProductSkeleton } from "@/components/Skeletons"
 import { badgeTone, stockBadge } from "@/components/stock-badge"
 import WhatsAppIcon from "@/components/WhatsAppIcon"
+import { RETURNS } from "@/lib/business"
 import { isIndia } from "@/lib/catalog"
 import { publicEnv } from "@/lib/env.public"
 import { formatPaise, unitWord } from "@/lib/format"
@@ -91,7 +92,6 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
   if ("redirect" in page) permanentRedirect(`/p/${page.redirect}`)
   const { tile, legal, info } = page
   const url = `${publicEnv.NEXT_PUBLIC_SITE_URL}/p/${tile.slug}`
-  const label = tile.code ?? tile.name
   const badge = stockBadge(tile)
   const imported = legal.countryOfOrigin !== null && !isIndia(legal.countryOfOrigin)
   const section = "flex flex-col gap-3 border-t border-line pt-6"
@@ -203,7 +203,7 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
           ) : null}
 
           {tile.purchasable ? (
-            <BuyBox id={tile.id} name={label} priced={tile.priced} unit={tile.unit} />
+            <BuyBox id={tile.id} name={tile.name} priced={tile.priced} unit={tile.unit} minOrderPaise={info.minOrderPaise} />
           ) : (
             <div className="flex flex-col gap-3">
               <p className="text-3xl font-semibold tracking-[-0.01em] text-muted">{priceCopy(tile.priced, tile.unit).main}</p>
@@ -223,9 +223,9 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
             <li className="flex items-start gap-2">
               <ShieldCheck aria-hidden className="mt-0.5 size-4.5 shrink-0 text-muted" strokeWidth={1.75} />
               <span>
-                Faulty on arrival? We replace or refund it.{" "}
+                Faulty? Tell us within {RETURNS.faultyDays} days and we replace or refund it. Wrong part? Return it unused within {RETURNS.wrongPartDays} days.{" "}
                 <Link href="/pages/returns" className="font-medium">
-                  Returns
+                  Returns policy
                 </Link>
               </span>
             </li>

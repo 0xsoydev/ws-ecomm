@@ -6,24 +6,30 @@ const WORDS: Record<string, string> = {
   accelerator: "throttle",
   accelator: "throttle",
   excelator: "throttle",
-  meter: "speedometer",
   shocker: "shock",
   dikki: "lock",
   chabi: "lock",
   key: "lock",
   break: "brake",
+  brek: "brake",
+  brk: "brake",
   disk: "disc",
+  controler: "controller",
+  contoller: "controller",
+  convertor: "converter",
+  transverter: "converter",
   indicater: "indicator",
   blinker: "indicator",
   tire: "tyre",
-  batteries: "battery",
   बैटरी: "battery",
   ब्रेक: "brake",
+  पैड: "pad",
   लाइट: "light",
   हॉर्न: "horn",
   मीटर: "speedometer",
   कंट्रोलर: "controller",
   चार्जर: "charger",
+  ताला: "lock",
 }
 
 export function normalise(text: string) {
@@ -35,12 +41,30 @@ export function codeMissing(name: string, code: string | null): code is string {
   return code !== null && !code.split(/[^\p{L}\p{N}]+/u).filter(Boolean).every((t) => words.includes(normalise(t)))
 }
 
+const VOLTS = [36, 48, 60, 64, 72, 84, 96]
+
+function expand(word: string) {
+  const list = /^(\d+(?:\/\d+)+)([a-z]+)$/.exec(word)
+  if (list?.[1] && list[2]) {
+    const unit = list[2]
+    return [word, ...list[1].split("/").map((n) => `${n}${unit}`)]
+  }
+  const range = /^(\d+)-(\d+)v$/.exec(word)
+  if (range) {
+    const lo = Number(range[1])
+    const hi = Number(range[2])
+    return [word, ...VOLTS.filter((v) => v >= lo && v <= hi).map((v) => `${String(v)}v`)]
+  }
+  return [word]
+}
+
 export function searchTerms(parts: readonly (string | null | undefined)[]) {
-  return parts
-    .flatMap((p) => (p ? p.split(/[\s,;:]+/) : []))
+  const words = parts
+    .flatMap((p) => (p ? p.toLowerCase().split(/[\s,;:]+/) : []))
+    .flatMap(expand)
     .map(normalise)
     .filter((w) => w.length > 0)
-    .join(" ")
+  return [...new Set(words.flatMap((w) => [w, stem(w)]))].join(" ")
 }
 
 function distance(a: string, b: string) {
@@ -64,8 +88,10 @@ export function stem(word: string) {
 function queryWords(query: string) {
   return query
     .trim()
+    .toLowerCase()
     .split(/\s+/)
-    .map((w) => WORDS[w.toLowerCase()] ?? w)
+    .filter(Boolean)
+    .map((w) => WORDS[w] ?? WORDS[stem(w)] ?? stem(w))
 }
 
 export function matchesName(name: string, query: string) {
@@ -86,19 +112,22 @@ function score(item: Searchable, q: string, tokens: readonly string[]) {
     if (words.some((w) => Math.abs(w.length - q.length) <= limit && distance(w, q) <= limit)) return 30
     if (tokens.length > 1 && tokens.every((t) => item.terms.split(" ").some((w) => w.startsWith(t) || (t.length >= 5 && distance(w, t) <= 1)))) return 25
   }
-  if (tokens.every((t) => item.context.includes(t) || item.terms.includes(t))) return 10
-  return 0
+  if (tokens.every((t) => item.context.includes(t) || item.terms.includes(t))) return 20
+  const hits = tokens.filter((t) => t.length >= 3 && (item.terms.includes(t) || item.context.includes(t))).length
+  return tokens.length > 1 && hits * 2 >= tokens.length ? 5 : 0
 }
 
-export function searchProducts<T extends Searchable>(items: readonly T[], query: string, limit = Infinity): T[] {
+export const EXACT = 80
+
+export function searchScored<T extends Searchable>(items: readonly T[], query: string, limit = Infinity): { item: T; s: number }[] {
   const words = queryWords(query)
   const q = normalise(words.join(""))
   if (q.length < 2) return []
   const tokens = words.map(normalise).filter((t) => t.length > 0)
   const scored = items.map((item) => ({ item, s: score(item, q, tokens) })).filter((r) => r.s > 0)
-  const direct = scored.some((r) => r.s > 10)
+  const strong = scored.some((r) => r.s > 5)
   return scored
-    .filter((r) => !direct || r.s > 10)
+    .filter((r) => !strong || r.s > 5)
     .sort(
       (a, b) =>
         b.s - a.s ||
@@ -108,7 +137,10 @@ export function searchProducts<T extends Searchable>(items: readonly T[], query:
         a.item.name.localeCompare(b.item.name),
     )
     .slice(0, limit)
-    .map((r) => r.item)
+}
+
+export function searchProducts<T extends Searchable>(items: readonly T[], query: string, limit = Infinity): T[] {
+  return searchScored(items, query, limit).map((r) => r.item)
 }
 
 export type Shortcut = { href: string; label: string; count: number }

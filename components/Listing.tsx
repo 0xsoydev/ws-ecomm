@@ -13,14 +13,14 @@ export default function Listing({ groups, models, chips, showVehicleFacet = true
     name: g.name,
     href: g.href,
     items: g.tiles.map((tile) => ({
-      tile: { id: tile.id, code: tile.code, name: tile.name, priced: tile.priced, purchasable: tile.purchasable, image: tile.image ? true : null, stock: tile.stock, bodyStyle: tile.bodyStyle, vehicles: tile.vehicles },
+      tile: { id: tile.id, code: tile.code, name: tile.name, priced: tile.priced, purchasable: tile.purchasable, image: tile.image ? true : null, stock: tile.stock, bodyStyle: tile.bodyStyle, vehicles: tile.vehicles, facets: tile.facets },
       node: <ProductCard tile={tile} />,
     })),
   }))
   const vehicles = vehicleOptions(models)
   const props = { sections, vehicles, chips, showVehicleFacet }
   return (
-    <Suspense fallback={<ListingView {...props} filter={{ vehicle: null, body: null, stock: false, sort: "recommended" }} vehicle={null} />}>
+    <Suspense fallback={<ListingView {...props} filter={{ vehicle: null, body: null, stock: false, specs: [], sort: "recommended" }} vehicle={null} />}>
       <ListingClient {...props} />
     </Suspense>
   )

@@ -6,10 +6,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type PointerEvent } from "react"
 import { announceAdd, setQty as setCartQty, useQty } from "@/lib/cart"
-import { unitWord } from "@/lib/format"
-import { hasRetailTier, MAX_LINE_QTY, minQty, nextBreak, perUnit, unitPrice, type Priced } from "@/lib/pricing"
+import { formatPaise, unitWord } from "@/lib/format"
+import { hasRetailTier, MAX_LINE_QTY, minQty, nextBreak, perUnit, unitPrice, validQty, type Priced } from "@/lib/pricing"
 import { button } from "@/lib/ui"
-import { validQty } from "./AddButton"
 import StickyBar from "./StickyBar"
 
 const rupees = { style: "currency", currency: "INR", maximumFractionDigits: 2, minimumFractionDigits: 0 } as const
@@ -87,7 +86,7 @@ function Stepper({ value, onChange, min, step, name, removable }: { value: numbe
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur()
         }}
-        className="h-full w-full min-w-0 bg-transparent text-center text-lg font-semibold outline-hidden focus-visible:bg-bg"
+        className="h-full w-full min-w-0 bg-transparent text-center text-lg font-semibold outline-hidden focus-visible:bg-bg focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-(--focus)"
       />
       <button
         type="button"
@@ -109,7 +108,7 @@ function Stepper({ value, onChange, min, step, name, removable }: { value: numbe
   )
 }
 
-export default function BuyBox({ id, name, priced, unit }: { id: number; name: string; priced: Priced; unit: string }) {
+export default function BuyBox({ id, name, priced, unit, minOrderPaise }: { id: number; name: string; priced: Priced; unit: string; minOrderPaise: number }) {
   const min = minQty(priced)
   const inCart = useQty(id)
   const [picked, setPicked] = useState(min)
@@ -125,7 +124,14 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
   const chips = priced.moq > 1 ? [priced.moq, priced.moq * 2, priced.moq * 4].filter((n) => n <= MAX_LINE_QTY) : []
   const step = priced.orderStep
   const router = useRouter()
+  const viewCart = useRef<HTMLAnchorElement>(null)
+  const focusCart = useRef(false)
+  useEffect(() => {
+    if (inCart && focusCart.current) viewCart.current?.focus()
+    focusCart.current = false
+  }, [inCart])
   const add = () => {
+    focusCart.current = document.activeElement?.closest("#buy-main") !== null
     setCartQty(id, validQty(priced, picked))
     announceAdd(id)
     if ("vibrate" in navigator) navigator.vibrate(10)
@@ -217,7 +223,7 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
 
       <div id="buy-main" className="grid grid-cols-2 gap-2">
         {inCart ? (
-          <Link href="/cart" className={`${button.secondary} h-13 text-lg no-underline`}>
+          <Link ref={viewCart} href="/cart" className={`${button.secondary} h-13 text-lg no-underline`}>
             <ShoppingBag aria-hidden className="size-5" strokeWidth={1.75} />
             View cart
           </Link>
@@ -230,6 +236,14 @@ export default function BuyBox({ id, name, priced, unit }: { id: number; name: s
           {inCart ? "Checkout" : "Buy now"}
         </button>
       </div>
+
+      {total < minOrderPaise ? (
+        <p className="-mt-2 text-sm text-muted">
+          Orders start at {formatPaise(minOrderPaise)}. Add other parts to your cart, or buy this at the shop.
+        </p>
+      ) : (
+        <p className="-mt-2 text-sm text-muted">Nothing to pay now. We confirm stock on WhatsApp first.</p>
+      )}
 
       <StickyBar targetId="buy-main" label={`Buy ${name}`}>
         <div className="flex items-center gap-3">

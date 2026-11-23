@@ -2,7 +2,6 @@
 
 import NumberFlow from "@number-flow/react"
 import { ChevronRight, House, LayoutGrid, Scooter, ShoppingBag } from "lucide-react"
-import { AnimatePresence, m, useReducedMotion } from "motion/react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -15,12 +14,10 @@ import type { BrowseSystem } from "./BrowseSheet"
 const BrowseSheet = dynamic(() => import("./BrowseSheet"), { ssr: false })
 
 const OWN_BOTTOM = ["/p/", "/cart", "/checkout"]
-const EASE = [0.22, 1, 0.36, 1] as const
 
 function CartBar() {
   const lines = useCart()
   const { data } = useSnapshot(lines.length > 0)
-  const reduce = Boolean(useReducedMotion())
   const [added, setAdded] = useState<string | null>(null)
 
   useEffect(() => {
@@ -59,28 +56,19 @@ function CartBar() {
     }
   }
   const items = `${String(lines.length)} ${lines.length === 1 ? "item" : "items"}`
-  const t = reduce ? { duration: 0 } : { duration: 0.3, ease: EASE }
 
   return (
-    <div
+    <aside
+      aria-label="Cart"
       data-bar="cart"
       className="fixed inset-x-3 bottom-[calc(64px+env(safe-area-inset-bottom))] z-30 overflow-hidden rounded-container border border-line-strong bg-surface shadow-[0_10px_30px_-14px_rgb(21_25_22/0.45)] lg:hidden"
     >
       <Link href="/cart" className="flex flex-col px-4 no-underline">
-        <AnimatePresence initial={false}>
-          {added ? (
-            <m.span
-              key="added"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4, transition: { duration: reduce ? 0 : 0.22 } }}
-              transition={t}
-              className="truncate border-b border-line pt-2.5 pb-2 text-sm"
-            >
-              Added <span className="font-semibold">{added}</span>
-            </m.span>
-          ) : null}
-        </AnimatePresence>
+        {added ? (
+          <span key={added} className="animate-rise truncate border-b border-line pt-2.5 pb-2 text-sm">
+            Added <span className="font-semibold">{added}</span>
+          </span>
+        ) : null}
         <span className="flex h-13 items-center gap-3">
           <span className="text-sm text-muted">{items}</span>
           {data ? (
@@ -95,7 +83,7 @@ function CartBar() {
       <span aria-live="polite" className="sr-only">
         {added ? `${added} added. ${items} in cart` : ""}
       </span>
-    </div>
+    </aside>
   )
 }
 

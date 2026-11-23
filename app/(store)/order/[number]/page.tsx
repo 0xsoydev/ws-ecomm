@@ -103,13 +103,14 @@ async function Content({ params }: { params: PageProps<"/order/[number]">["param
           <h2 id="send" className="text-lg">
             We have your order. Next, we check the parts and confirm.
           </h2>
+          <p className="text-sm text-muted">Sending it on WhatsApp gets you a faster reply. It is optional.</p>
           <ol className="flex flex-col gap-2 text-sm text-muted">
             <li>1. {status.tone === "closed" ? `The shop is closed now (${status.text.replace(/^Closed(?: today)?, /, "")}). We confirm on WhatsApp or by phone after we open.` : "We confirm on WhatsApp or by phone, usually within an hour."}</li>
             <li>2. {order.delivery === "pickup" ? "Pick it up at the shop" : "Pay by UPI, then we ship it"}{order.method === "pay_at_store" ? " and pay there." : "."}</li>
           </ol>
           <a href={waLink(message)} target="_blank" rel="noopener" className={`${button.big} w-full no-underline`}>
             <WhatsAppIcon className="size-5" />
-            Send it on WhatsApp for a faster reply
+            Send on WhatsApp
           </a>
           <p className="flex items-center gap-1.5 text-sm text-muted">
             <Phone aria-hidden className="size-4" strokeWidth={1.75} />

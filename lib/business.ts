@@ -9,4 +9,6 @@ export const BUSINESS = {
   email: "gulabautoev@gmail.com",
 } as const
 
+export const RETURNS = { faultyDays: 2, wrongPartDays: 7 } as const
+
 export const consumerCare = `${BUSINESS.legalName}, ${BUSINESS.phone}, ${BUSINESS.email}`

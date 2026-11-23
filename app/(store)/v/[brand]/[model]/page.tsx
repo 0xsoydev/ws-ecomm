@@ -6,6 +6,7 @@ import PageHead from "@/components/PageHead"
 import RememberVehicle from "@/components/RememberVehicle"
 import { ListingSkeleton } from "@/components/Skeletons"
 import { partsCount } from "@/lib/format"
+import { breadcrumbs, itemList, jsonLd } from "@/lib/jsonld"
 import { catalog, VEHICLE_INDEX_MIN, vehicleTiles } from "@/lib/storefront"
 
 export const ensureStatic = "navigation"
@@ -59,6 +60,7 @@ async function Content({ params }: { params: PageProps<"/v/[brand]/[model]">["pa
   ].filter((g) => g.tiles.length > 0)
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd([breadcrumbs([{ name: "Vehicles", path: "/v" }, { name: found.m.brandName, path: `/v/${found.m.brandSlug}` }, { name: option.label, path: `/v/${found.m.brandSlug}/${found.m.slug}` }]), itemList(`Parts for ${option.label}`, found.tiles)])} />
       <PageHead back={{ href: `/v/${found.m.brandSlug}` as Route, label: found.m.brandName }} title={`Parts for ${option.label}`}>
         {rest.length ? <p className="max-w-[60ch] text-sm text-muted">Mechanics buy these for the {option.label}. We have not test-fitted each one on it yet, so send a photo of your old part on WhatsApp and we confirm before you pay.</p> : null}
         <RememberVehicle vehicleKey={option.key} label={option.label} />

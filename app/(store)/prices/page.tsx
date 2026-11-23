@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 function stockText(t: Tile) {
   if (t.stock.kind === "out") return "Out of stock"
   if (t.stock.kind === "low") return `Only ${String(t.stock.left)} left`
-  return "Ask"
+  return "Ask for stock"
 }
 
 export default async function PricesPage() {
@@ -67,15 +67,23 @@ export default async function PricesPage() {
                       </Link>
                     </th>
                     <td className="sm:py-3 sm:pr-4">
+                      <span className="text-muted sm:hidden">Minimum </span>
                       {minQty(t.priced)} {unitWord(t.unit, minQty(t.priced))}
                     </td>
-                    <td className="sm:py-3 sm:pr-4">{t.priced.retailPaise !== null && hasRetailTier(t.priced) ? formatPaise(t.priced.retailPaise) : "Single price"}</td>
+                    <td className="sm:py-3 sm:pr-4">
+                      <span className="text-muted sm:hidden">Retail </span>
+                      {t.priced.retailPaise !== null && hasRetailTier(t.priced) ? formatPaise(t.priced.retailPaise) : "No bulk price"}
+                    </td>
                     <td className="font-semibold sm:py-3 sm:pr-4">
+                      <span className="font-normal text-muted sm:hidden">{t.priced.retailPaise !== null && hasRetailTier(t.priced) ? "Wholesale " : "Price "}</span>
                       {formatPaise(t.priced.wholesalePaise)}
                       {t.priced.moq > 1 ? <span className="font-normal text-muted"> from {t.priced.moq}</span> : null}
                     </td>
                     <td className="text-muted sm:py-3 sm:pr-4">{stockText(t)}</td>
-                    <td className="sm:py-3">{t.purchasable ? "Online" : "At the shop"}</td>
+                    <td className="sm:py-3">
+                      <span className="text-muted sm:hidden">Buy </span>
+                      {t.purchasable ? "Online" : "At the shop"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -6,6 +6,7 @@ import Listing, { vehicleOptions } from "@/components/Listing"
 import PageHead from "@/components/PageHead"
 import { ListingSkeleton } from "@/components/Skeletons"
 import { partsCount } from "@/lib/format"
+import { breadcrumbs, itemList, jsonLd } from "@/lib/jsonld"
 import { catalog, vehicleTiles } from "@/lib/storefront"
 import { chip } from "@/lib/ui"
 
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: PageProps<"/v/[brand]">): Pro
   return {
     title: `${found.name} EV spare parts in Mumbai`,
     description: `${partsCount(found.tiles.length)} for ${found.models.map((m) => vehicleOptions([m])[0]?.label).join(", ")} at Gulab Auto Garage, Malad West, Mumbai.`,
-    alternates: { canonical: `/v/${brand}` },
+    alternates: { canonical: found.models.length === 1 && found.models[0] ? `/v/${brand}/${found.models[0].slug}` : `/v/${brand}` },
   }
 }
 
@@ -52,6 +53,7 @@ async function Content({ params }: { params: PageProps<"/v/[brand]">["params"] }
   const { name, models, tiles } = found
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd([breadcrumbs([{ name: "Vehicles", path: "/v" }, { name, path: `/v/${brand}` }]), itemList(`${name} parts`, tiles)])} />
       <PageHead back={{ href: "/v", label: "Vehicles" }} title={`${name} parts`}>
         <ul aria-label={`${name} models`} className="flex flex-wrap gap-2">
           {vehicleOptions(models).map((v, i) => (

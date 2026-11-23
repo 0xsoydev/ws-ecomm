@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: { default: "WS Green: EV spare parts and batteries in Malad West, Mumbai", template: "%s | WS Green" },
   description: "EV two-wheeler spare parts, BMS and controllers at counter prices, sold by Gulab Auto Garage, Malad West, Mumbai.",
   applicationName: "WS Green",
+  openGraph: { siteName: "WS Green", locale: "en_IN", type: "website" },
 }
 
 export const viewport: Viewport = {

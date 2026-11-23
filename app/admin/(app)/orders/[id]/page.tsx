@@ -71,6 +71,7 @@ async function Detail({ params }: { params: PageProps<"/admin/orders/[id]">["par
             {contact?.name} <span className="text-muted">+91 {contact?.phone}</span>
           </p>
           {contact?.email ? <p className="text-sm text-muted">{contact.email}</p> : null}
+          {contact?.businessName || contact?.gstin ? <p className="text-sm text-muted">{[contact.businessName, contact.gstin ? `GSTIN ${contact.gstin}` : null].filter(Boolean).join(", ")}</p> : null}
           <div className="flex flex-wrap gap-2 pt-1">
             {contact ? (
               <>

@@ -1,28 +1,18 @@
 "use client"
 
 import { Minus, Plus, Trash } from "lucide-react"
-import { AnimatePresence, m, useReducedMotion } from "motion/react"
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react"
 import { announceAdd, qtyOf, setQty, useQty } from "@/lib/cart"
-import { MAX_LINE_QTY, minQty, type Priced } from "@/lib/pricing"
+import { MAX_LINE_QTY, minQty, validQty, type Priced } from "@/lib/pricing"
 
 const HOLD_DELAY = 400
 const REPEAT_FIRST = 140
 const REPEAT_FASTEST = 45
-const EASE = [0.22, 1, 0.36, 1] as const
-
-export function validQty(priced: Priced, typed: number) {
-  const min = minQty(priced)
-  const step = priced.orderStep
-  const top = MAX_LINE_QTY - (MAX_LINE_QTY % step)
-  return Math.min(top, Math.max(min, Math.ceil(typed / step) * step))
-}
 
 export default function AddButton({ id, priced, name, size }: { id: number; priced: Priced; name: string; size: "card" | "row" }) {
   const qty = useQty(id)
   const open = qty > 0
   const min = minQty(priced)
-  const reduce = Boolean(useReducedMotion())
   const [draft, setDraft] = useState<string | null>(null)
   const hold = useRef<ReturnType<typeof setTimeout>>(undefined)
   const touch = useRef<number | null>(null)
@@ -116,21 +106,11 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
     }
   }
 
-  const fade = reduce ? { duration: 0 } : { duration: 0.2, ease: EASE }
   const sideButton =
     "flex h-full items-center justify-center text-current outline-hidden transition-colors duration-150 ease-out [@media(hover:hover)]:hover:bg-current/10 active:bg-current/15 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-current"
 
   const stepper = (
-    <m.div
-      key="stepper"
-      role="group"
-      aria-label={`Quantity of ${name}`}
-      className={`grid h-full w-full ${size === "row" ? "grid-cols-[36px_1fr_36px]" : "grid-cols-[44px_1fr_44px]"}`}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={fade}
-    >
+    <div role="group" aria-label={`Quantity of ${name}`} className={`grid h-full w-full animate-pop ${size === "row" ? "grid-cols-[36px_1fr_36px]" : "grid-cols-[44px_1fr_44px]"}`}>
       <button
         type="button"
         aria-label={qty <= min ? `Remove ${name}` : `One less ${name}`}
@@ -152,7 +132,7 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
         inputMode="numeric"
         pattern="[0-9]*"
         enterKeyHint="done"
-        className="w-full min-w-0 bg-transparent text-center font-semibold text-current outline-hidden [appearance:textfield] focus-visible:bg-current/10"
+        className="w-full min-w-0 bg-transparent text-center font-semibold text-current outline-hidden [appearance:textfield] focus-visible:bg-current/10 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-current"
         value={draft ?? String(qty)}
         onFocus={(e) => {
           setDraft(String(qty))
@@ -179,37 +159,27 @@ export default function AddButton({ id, priced, name, size }: { id: number; pric
       >
         <Plus aria-hidden className="size-4" strokeWidth={2} />
       </button>
-    </m.div>
+    </div>
   )
 
   const addButton = (
-    <m.button
-      key="add"
+    <button
       ref={addRef}
       type="button"
       aria-label={`Add ${name} to cart`}
-      className="flex h-full w-full items-center justify-center gap-1.5 rounded-control font-semibold outline-hidden transition-[background-color,transform] duration-150 ease-out active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-current [@media(hover:hover)]:hover:bg-current/10"
+      className="flex h-full w-full animate-pop items-center justify-center gap-1.5 rounded-control font-semibold outline-hidden transition-[background-color,transform] duration-150 ease-out active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-current [@media(hover:hover)]:hover:bg-current/10"
       onClick={add}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={fade}
     >
       {size === "card" ? <span>Add</span> : null}
       <Plus aria-hidden className="size-4" strokeWidth={2} />
-    </m.button>
+    </button>
   )
 
   return (
-    <m.div
-      className={`relative z-10 overflow-hidden rounded-control border transition-colors duration-200 ease-out ${size === "card" ? `h-11 w-full ${open ? "border-ink bg-ink text-bg" : "border-line-strong bg-surface text-ink"}` : `h-11 bg-surface text-ink ${open ? "border-ink" : "border-line-strong"}`}`}
-      initial={false}
-      animate={size === "row" ? { width: open ? 112 : 44 } : undefined}
-      transition={reduce ? { duration: 0 } : { duration: 0.25, ease: EASE }}
+    <div
+      className={`relative z-10 overflow-hidden rounded-control border transition-[width,background-color,border-color] duration-200 ease-out ${size === "card" ? `h-11 w-full ${open ? "border-ink bg-ink text-bg" : "border-line-strong bg-surface text-ink"}` : `h-11 bg-surface text-ink ${open ? "w-28 border-ink" : "w-11 border-line-strong"}`}`}
     >
-      <AnimatePresence initial={false} mode="popLayout">
-        {open ? stepper : addButton}
-      </AnimatePresence>
-    </m.div>
+      {open ? stepper : addButton}
+    </div>
   )
 }

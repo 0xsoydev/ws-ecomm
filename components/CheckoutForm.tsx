@@ -13,6 +13,7 @@ import { unitPrice } from "@/lib/pricing"
 import { useSnapshot } from "@/lib/snapshot"
 import type { Tile } from "@/lib/storefront"
 import { button, field } from "@/lib/ui"
+import { isMaharashtraPincode } from "@/lib/orders"
 import { useStored, writeStored } from "@/lib/use-stored"
 import Placeholder from "./Placeholder"
 import ProductImage from "./ProductImage"
@@ -20,7 +21,7 @@ import ProductImage from "./ProductImage"
 const rupees = { style: "currency", currency: "INR", maximumFractionDigits: 2, minimumFractionDigits: 0 } as const
 const SAVED = "ws-contact"
 
-type Saved = { name: string; phone: string; email: string; line1: string; line2: string; landmark: string; city: string; pincode: string }
+type Saved = { name: string; phone: string; email: string; line1: string; line2: string; landmark: string; city: string; pincode: string; business: string; gstin: string; delivery: string }
 
 function readSaved(raw: string | null): Saved | null {
   if (!raw) return null
@@ -31,7 +32,7 @@ function readSaved(raw: string | null): Saved | null {
       const x = (v as Record<string, unknown>)[k]
       return typeof x === "string" ? x : ""
     }
-    return { name: get("name"), phone: get("phone"), email: get("email"), line1: get("line1"), line2: get("line2"), landmark: get("landmark"), city: get("city"), pincode: get("pincode") }
+    return { name: get("name"), phone: get("phone"), email: get("email"), line1: get("line1"), line2: get("line2"), landmark: get("landmark"), city: get("city"), pincode: get("pincode"), business: get("business"), gstin: get("gstin"), delivery: get("delivery") }
   } catch {
     return null
   }
@@ -77,7 +78,9 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
   const [pending, start] = useTransition()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<ReactNode>(null)
-  const [delivery, setDelivery] = useState<"pickup" | "ship">(courier ? "ship" : "pickup")
+  const [delivery, setDelivery] = useState<"pickup" | "ship" | null>(null)
+  const [pinError, setPinError] = useState<string | null>(null)
+  const city = useRef<HTMLInputElement>(null)
   const [payment, setPayment] = useState<"pay_at_store" | "upi_manual">("pay_at_store")
 
   if (lines.length === 0) {
@@ -118,7 +121,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
   const itemsPaise = priced.reduce((s, p) => s + p.unitPaise * p.line.qty, 0)
   const pickupOnly = priced.filter((p) => p.tile.pickupOnly)
   const shipBlocked = !courier || pickupOnly.length > 0
-  const mode = shipBlocked ? "pickup" : delivery
+  const mode = shipBlocked ? "pickup" : (delivery ?? (saved?.delivery === "ship" ? "ship" : "pickup"))
   const method = mode === "ship" ? "upi_manual" : payment
   const belowMinimum = itemsPaise < minOrderPaise
   const fee = mode === "ship" ? courierFee(rates, itemsPaise) : 0
@@ -127,6 +130,17 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
 
   const submit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (belowMinimum) {
+      setNotice(
+        <>
+          The minimum order is {formatPaise(minOrderPaise)}. Add {formatPaise(minOrderPaise - itemsPaise)} more.{" "}
+          <Link href="/" className="font-semibold">
+            Add more parts
+          </Link>
+        </>,
+      )
+      return
+    }
     const form = new FormData(e.currentTarget)
     const text = (k: string) => {
       const v = form.get(k)
@@ -143,6 +157,8 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
       landmark: text("landmark"),
       city: text("city"),
       pincode: text("pincode"),
+      business: text("business"),
+      gstin: text("gstin").toUpperCase(),
       payment: method,
       note: text("note"),
       whatsappUpdates: form.get("updates") === "on",
@@ -159,7 +175,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
         return
       }
       if (result.ok) {
-        writeStored(SAVED, remember ? JSON.stringify({ name: payload.name, phone: payload.phone, email: payload.email, line1: payload.line1, line2: payload.line2, landmark: payload.landmark, city: payload.city, pincode: payload.pincode }) : null)
+        writeStored(SAVED, remember ? JSON.stringify({ name: payload.name, phone: payload.phone, email: payload.email, line1: payload.line1, line2: payload.line2, landmark: payload.landmark, city: payload.city, pincode: payload.pincode, business: payload.business, gstin: payload.gstin, delivery: payload.delivery }) : null)
         clearCart()
         router.replace(`/order/${result.number}`)
         return
@@ -226,6 +242,17 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
           <Field id="co-email" label="Email (optional)" error={err("email")}>
             <input id="co-email" name="email" type="email" autoComplete="email" defaultValue={saved?.email} className={field} {...described("email")} />
           </Field>
+          <details open={Boolean(saved?.gstin || saved?.business || err("gstin"))} className="group rounded-control border border-line px-4 py-3">
+            <summary className="cursor-pointer text-sm font-medium">Buying for a garage? Add your business name and GSTIN</summary>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <Field id="co-business" label="Business name" error={err("business")}>
+                <input id="co-business" name="business" autoComplete="organization" defaultValue={saved?.business} className={field} {...described("business")} />
+              </Field>
+              <Field id="co-gstin" label="GSTIN" error={err("gstin")} hint="Printed on your bill.">
+                <input id="co-gstin" name="gstin" maxLength={15} autoCapitalize="characters" defaultValue={saved?.gstin} className={`${field} uppercase`} {...described("gstin")} />
+              </Field>
+            </div>
+          </details>
         </fieldset>
 
         <fieldset className="flex flex-col gap-3">
@@ -268,11 +295,25 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
               <Field id="co-landmark" label="Landmark (optional)">
                 <input id="co-landmark" name="landmark" defaultValue={saved?.landmark} className={field} />
               </Field>
-              <Field id="co-pincode" label="Pincode" error={err("pincode")}>
-                <input id="co-pincode" name="pincode" inputMode="numeric" autoComplete="postal-code" maxLength={6} defaultValue={saved?.pincode} className={field} {...described("pincode")} />
+              <Field id="co-pincode" label="Pincode" error={err("pincode") ?? pinError ?? undefined}>
+                <input
+                  id="co-pincode"
+                  name="pincode"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  maxLength={6}
+                  defaultValue={saved?.pincode}
+                  className={field}
+                  onBlur={(e) => {
+                    const pin = e.currentTarget.value.trim()
+                    setPinError(pin && !isMaharashtraPincode(pin) ? "We deliver within Maharashtra only. Enter a pincode starting 40 to 44" : null)
+                    if (/^400\d{3}$/.test(pin) && city.current && !city.current.value) city.current.value = "Mumbai"
+                  }}
+                  {...(err("pincode") || pinError ? { "aria-invalid": true, "aria-describedby": "co-pincode-error" } : {})}
+                />
               </Field>
               <Field id="co-city" label="City" error={err("city")}>
-                <input id="co-city" name="city" autoComplete="address-level2" defaultValue={saved?.city} className={field} {...described("city")} />
+                <input ref={city} id="co-city" name="city" autoComplete="address-level2" defaultValue={saved?.city} className={field} {...described("city")} />
               </Field>
               <Field id="co-state" label="State">
                 <input id="co-state" value="Maharashtra" readOnly className={`${field} text-muted`} />
@@ -365,7 +406,7 @@ export default function CheckoutForm({ scope, courier, minOrderPaise, rates }: {
           </p>
         ) : null}
         {belowMinimum ? <p className="text-sm text-danger">The minimum order is {formatPaise(minOrderPaise)}. Add {formatPaise(minOrderPaise - itemsPaise)} more.</p> : null}
-        <button type="submit" disabled={pending || belowMinimum || priced.length === 0} className={`${button.big} w-full`}>
+        <button type="submit" disabled={pending || priced.length === 0} className={`${button.big} w-full`}>
           {pending ? <LoaderCircle aria-hidden className="size-5 animate-spin" strokeWidth={2} /> : null}
           {pending ? "Placing order" : `Place order, ${formatPaise(totalPaise)}`}
         </button>

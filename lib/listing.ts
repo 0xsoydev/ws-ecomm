@@ -17,14 +17,24 @@ export type Filterable = {
   stock: { kind: string }
   bodyStyle: BodyStyle | null
   vehicles: readonly { modelId: number }[]
+  facets: readonly (readonly [string, string])[]
 }
 
-export type ListingFilter = { vehicle: number | null; body: BodyStyle | null; stock: boolean; sort: Sort }
+export const FACET_KEYS = ["Maker", "Series cells", "Voltage", "Current", "Position"] as const
+export const facetKey = (key: string, value: string) => `${key}=${value}`
+
+export type ListingFilter = { vehicle: number | null; body: BodyStyle | null; stock: boolean; specs: readonly string[]; sort: Sort }
 
 export function matches(t: Filterable, f: Omit<ListingFilter, "sort">) {
   if (f.vehicle !== null && !t.vehicles.some((v) => v.modelId === f.vehicle)) return false
   if (f.body !== null && t.bodyStyle !== f.body) return false
   if (f.stock && t.stock.kind === "out") return false
+  const wanted = new Map<string, string[]>()
+  for (const s of f.specs) {
+    const key = s.slice(0, s.indexOf("="))
+    wanted.set(key, [...(wanted.get(key) ?? []), s])
+  }
+  for (const options of wanted.values()) if (!t.facets.some(([k, v]) => options.includes(facetKey(k, v)))) return false
   return true
 }
 
@@ -44,11 +54,18 @@ export function applyFilter<T extends Filterable>(items: readonly T[], f: Listin
 export function facetCounts(items: readonly Filterable[], f: ListingFilter) {
   const vehicles = new Map<number, number>()
   const bodies = new Map<BodyStyle, number>()
+  const specs = new Map<string, Map<string, number>>()
   let inStock = 0
   for (const t of items) {
+    for (const [k, v] of t.facets) {
+      if (!matches(t, { ...f, specs: f.specs.filter((s) => !s.startsWith(`${k}=`)) })) continue
+      const values = specs.get(k) ?? new Map<string, number>()
+      values.set(v, (values.get(v) ?? 0) + 1)
+      specs.set(k, values)
+    }
     if (matches(t, { ...f, vehicle: null })) for (const v of t.vehicles) vehicles.set(v.modelId, (vehicles.get(v.modelId) ?? 0) + 1)
     if (t.bodyStyle && matches(t, { ...f, body: null })) bodies.set(t.bodyStyle, (bodies.get(t.bodyStyle) ?? 0) + 1)
     if (t.stock.kind !== "out" && matches(t, { ...f, stock: false })) inStock++
   }
-  return { vehicles, bodies, inStock, total: items.filter((t) => matches(t, f)).length }
+  return { vehicles, bodies, specs, inStock, total: items.filter((t) => matches(t, f)).length }
 }

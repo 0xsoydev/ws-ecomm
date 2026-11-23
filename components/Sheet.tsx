@@ -35,6 +35,7 @@ export default function Sheet({
         <Drawer.Backdrop className="fixed inset-0 z-40 min-h-dvh bg-on-well opacity-[calc(0.45*(1-var(--drawer-swipe-progress)))] transition-opacity duration-350 ease-out data-ending-style:opacity-0 data-starting-style:opacity-0 data-swiping:duration-0 dark:opacity-[calc(0.7*(1-var(--drawer-swipe-progress)))]" />
         <Drawer.Viewport className={`fixed inset-0 z-50 flex ${side === "bottom" ? "items-end justify-center" : "items-stretch justify-end"}`}>
           <Drawer.Popup
+            aria-modal="true"
             className={`flex flex-col bg-surface text-ink shadow-[0_-8px_32px_-12px_rgb(21_25_22/0.25)] outline-hidden transition-transform duration-350 ease-out data-ending-style:duration-250 data-swiping:select-none data-swiping:duration-0 ${popup[side]}`}
           >
             {side === "bottom" ? <span aria-hidden className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line-strong/60" /> : null}

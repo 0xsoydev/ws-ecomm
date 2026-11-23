@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { codeMissing, matchesName, normalise, searchProducts, searchTerms } from "./search"
+import { codeMissing, EXACT, matchesName, searchScored, normalise, searchProducts, searchTerms } from "./search"
 
 const item = (code: string | null, name: string, context: string[] = [], purchasable = false) => ({
   code,
@@ -19,6 +19,11 @@ const items = [
   item(null, "Brake lever, Ola S1", ["Brake parts"]),
   item(null, "Cell holder 18650", ["Cells & holders", "Batteries & BMS"]),
   item("LB2 OVAL", "LED bulb LB2 oval", ["Bulbs & holders"]),
+  item(null, "Smart controller 48/60/72V 30A Calc", ["Controllers", "Controllers & electricals"]),
+  item(null, "Sinewave controller 48-72V 35A, black", ["Controllers", "Controllers & electricals"]),
+  item(null, "DC-DC converter 10A, one wire (transverter)", ["Converters", "Controllers & electricals"]),
+  item(null, "SB50 connector set, grey", ["Connectors", "Connectors & charging"]),
+  item(null, "Speedometer SM51 meter display, black", ["Speedometers", "Dashboard"]),
   item(null, "Battery box lock", ["Battery accessories"]),
 ]
 
@@ -31,7 +36,7 @@ test("normalise strips separators", () => {
 test("codes win, in any spacing", () => {
   expect(names("13s")[0]).toBe("Daly BMS 13S 40A, 48V")
   expect(names("6203")[0]).toBe("Ball bearing 6203 2RS")
-  expect(names("sb 50")[0]).toBe("SB50 power connector")
+  expect(names("sb 50")[0]).toMatch(/^SB50 /)
   expect(names("lb2oval")[0]).toBe("LED bulb LB2 oval")
 })
 
@@ -53,9 +58,10 @@ test("purchasable ranks above display-only at equal score", () => {
   expect(searchProducts(both, "mirror").map((i) => i.name)).toEqual(["Mirror right", "Mirror left"])
 })
 
-test("a category word alone does not drag in the whole category when names match", () => {
-  expect(names("bms")).toEqual(["Daly BMS 13S 40A, 48V"])
-  expect(names("holders")).toContain("Cell holder 18650")
+test("name matches rank above parts that only share the category", () => {
+  const found = names("bms")
+  expect(found[0]).toBe("Daly BMS 13S 40A, 48V")
+  expect(found.slice(1)).toEqual(expect.arrayContaining(["Cell holder 18650"]))
 })
 
 test("misspellings and synonyms find the part", () => {
@@ -78,4 +84,30 @@ test("a code is added to a name only when the name lacks its words", () => {
   expect(codeMissing("Daly BMS 13S 40A, 48V", "13S 40A")).toBe(false)
   expect(codeMissing("Dipper switch", "SW-DIM")).toBe(true)
   expect(codeMissing("Dipper switch", null)).toBe(false)
+})
+
+test("plural, Hinglish and Hindi words reach the right parts", () => {
+  expect(names("breaks")).toContain("Brake lever, Ola S1")
+  expect(names("brek")).toContain("Brake lever, Ola S1")
+  expect(names("battery")).toEqual(expect.arrayContaining(["Daly BMS 13S 40A, 48V", "Battery box lock"]))
+  expect(names("बैटरी")).toContain("Daly BMS 13S 40A, 48V")
+})
+
+test("voltage lists and ranges match a single voltage", () => {
+  expect(names("48v 30a")).toEqual(["Smart controller 48/60/72V 30A Calc"])
+  expect(names("60v controller")).toEqual(expect.arrayContaining(["Smart controller 48/60/72V 30A Calc", "Sinewave controller 48-72V 35A, black"]))
+})
+
+test("misspelt converter finds converters, not connectors", () => {
+  expect(names("convertor")).toEqual(["DC-DC converter 10A, one wire (transverter)"])
+})
+
+test("no full match falls back to parts matching most words", () => {
+  expect(names("speedometer ola")).toEqual(expect.arrayContaining(["Speedometer SM51 meter display, black"]))
+})
+
+test("an exact code ranks first and is marked exact", () => {
+  const top = searchScored(items, "13S 40A")[0]
+  expect(top?.item.name).toBe("Daly BMS 13S 40A, 48V")
+  expect(top?.s).toBeGreaterThanOrEqual(EXACT)
 })

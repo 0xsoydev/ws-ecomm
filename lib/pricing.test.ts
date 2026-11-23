@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest"
-import { BelowMinimum, listingPrice, minQty, nextBreak, OffStep, OverMaximum, priceCopy, proposeRetailPaise, unitPrice, type Priced } from "./pricing"
+import { BelowMinimum, listingPrice, minQty, nextBreak, OffStep, OverMaximum, priceCopy, proposeRetailPaise, unitPrice, validQty, type Priced } from "./pricing"
 
 const bulb: Priced = { retailPaise: 18000, wholesalePaise: 16000, moq: 3, minOrderQty: 1, orderStep: 1 }
 const singlePrice: Priced = { retailPaise: null, wholesalePaise: 420000, moq: 1, minOrderQty: 1, orderStep: 1 }
@@ -75,4 +75,14 @@ describe("priceCopy", () => {
   test("paise survive", () => {
     expect(priceCopy({ ...singlePrice, wholesalePaise: 150 }, "pcs").main).toBe("₹1.50 / pc")
   })
+})
+
+test("typed quantities snap up to the minimum and the pack step, and stop at the line maximum", () => {
+  const pack = { retailPaise: null, wholesalePaise: 9000, moq: 100, minOrderQty: 100, orderStep: 100 }
+  expect(validQty(pack, 1)).toBe(100)
+  expect(validQty(pack, 150)).toBe(200)
+  expect(validQty(pack, 99999)).toBe(10000)
+  const single = { retailPaise: 15000, wholesalePaise: 12000, moq: 2, minOrderQty: 1, orderStep: 1 }
+  expect(validQty(single, 0)).toBe(1)
+  expect(validQty(single, 7)).toBe(7)
 })

@@ -6,10 +6,11 @@ import type { CheckoutInput, CheckoutResult } from "./actions"
 
 const PORT = 55500 + Math.floor(Math.random() * 400)
 let ip = "10.0.0.1"
+const setCookies: { name: string; value: string }[] = []
 
 vi.mock("next/headers", () => ({
   headers: () => Promise.resolve(new Headers({ "x-real-ip": ip })),
-  cookies: () => Promise.resolve({ set: () => undefined, get: () => undefined }),
+  cookies: () => Promise.resolve({ set: (name: string, value: string) => setCookies.push({ name, value }), get: () => undefined }),
 }))
 vi.mock("next/cache", () => ({ updateTag: () => undefined }))
 vi.mock("next/server", () => ({ after: () => undefined }))
@@ -56,20 +57,29 @@ const ok = (r: CheckoutResult) => {
   return Number(r.number.slice(2))
 }
 
-test("a pickup order is saved with server prices and reserves tracked stock", async () => {
-  const id = ok(await placeOrder(order({ lines: [{ id: 7, qty: 3, unitPaise: 20000 }] })))
-  const [row] = await sql(`select stage, total_paise, method from orders where id = ${String(id)}`)
-  expect(row).toMatchObject({ stage: "requested", total_paise: 60000, method: "pay_at_store" })
+test("a pickup order is saved with server prices; stock waits for the shop to confirm", async () => {
+  const id = ok(await placeOrder(order({ lines: [{ id: 7, qty: 3, unitPaise: 20000 }], business: "Patil Motors", gstin: "27ABCDE1234F1Z5" })))
+  const [row] = await sql(`select stage, total_paise, method, contact->>'gstin' as gstin from orders where id = ${String(id)}`)
+  expect(row).toMatchObject({ stage: "requested", total_paise: 60000, method: "pay_at_store", gstin: "27ABCDE1234F1Z5" })
   const [lever] = await sql("select stock from product where id = 7")
-  expect(lever?.stock).toBe(7)
+  expect(lever?.stock).toBe(10)
 })
 
-test("the same request twice gives one order; a changed request is refused", async () => {
+test("a bad GSTIN is refused on its field", async () => {
+  expect(await placeOrder(order({ gstin: "27ABC" }))).toMatchObject({ ok: false, kind: "fields", fields: { gstin: expect.any(String) as string } })
+})
+
+test("a retry with the same key returns the same order and sets the same order cookie again", async () => {
   const input = order()
+  setCookies.length = 0
   const first = await placeOrder(input)
   expect(await placeOrder(input)).toEqual(first)
-  const again = await placeOrder({ ...input, note: "changed" })
-  expect(again).toMatchObject({ ok: false, kind: "message" })
+  expect(await placeOrder({ ...input, note: "edited after a lost reply" })).toEqual(first)
+  expect(setCookies).toHaveLength(3)
+  expect(new Set(setCookies.map((c) => `${c.name}=${c.value}`)).size).toBe(1)
+  const [row] = await sql(`select cookie_hash from orders where id = ${String(ok(first))}`)
+  const { createHash } = await import("node:crypto")
+  expect(row?.cookie_hash).toBe(createHash("sha256").update(setCookies[0]?.value ?? "").digest("hex"))
 })
 
 test("a stale price is refused with the current price", async () => {

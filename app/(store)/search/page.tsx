@@ -7,12 +7,15 @@ import Listing from "@/components/Listing"
 import { ListingSkeleton } from "@/components/Skeletons"
 import SystemIcon from "@/components/SystemIcon"
 import WhatsAppLink from "@/components/WhatsAppLink"
-import { searchProducts, shortcuts } from "@/lib/search"
+import { EXACT, searchScored, shortcuts } from "@/lib/search"
 import { catalog } from "@/lib/storefront"
 import { button } from "@/lib/ui"
 import { photoHelp } from "@/lib/whatsapp"
 
-export const metadata: Metadata = { title: "Search", robots: { index: false, follow: true } }
+export async function generateMetadata({ searchParams }: PageProps<"/search">): Promise<Metadata> {
+  const q = (await searchParams).q
+  return { title: typeof q === "string" && q.trim() ? `${q.trim().slice(0, 60)}: search` : "Search", robots: { index: false, follow: true } }
+}
 
 export default function SearchPage({ searchParams }: PageProps<"/search">) {
   return (
@@ -28,7 +31,10 @@ async function Results({ searchParams }: { searchParams: PageProps<"/search">["s
   const sp = await searchParams
   const q = (typeof sp.q === "string" ? sp.q : "").trim().slice(0, 80)
   const data = await catalog()
-  const all = searchProducts(data.tiles, q)
+  const scored = searchScored(data.tiles, q)
+  const all = scored.map((r) => r.item)
+  const exact = scored.filter((r) => r.s >= EXACT).map((r) => r.item)
+  const groups = exact.length && exact.length < all.length ? [{ slug: "exact", name: "Exact match", tiles: exact }, { slug: "similar", name: "Similar parts", tiles: all.filter((t) => !exact.includes(t)) }] : [{ slug: "results", name: `Parts matching ${q}`, tiles: all }]
   const jumps = q ? shortcuts(data, q) : []
   return (
     <>
@@ -64,7 +70,7 @@ async function Results({ searchParams }: { searchParams: PageProps<"/search">["s
           </ul>
         </div>
       ) : null}
-      {all.length ? <Listing groups={[{ slug: "results", name: `Parts matching ${q}`, tiles: all }]} models={data.models} chips={[]} /> : null}
+      {all.length ? <Listing groups={groups} models={data.models} chips={[]} /> : null}
     </>
   )
 }

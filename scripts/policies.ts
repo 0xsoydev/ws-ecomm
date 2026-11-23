@@ -1,3 +1,5 @@
+import { RETURNS } from "../lib/business"
+
 const SHOP = "Gulab Auto Garage, 1 Akshardham Complex, near Milap Theatre, S.V. Road, Malad West, Mumbai 400064"
 const CONTACT = "+91 98217 84847 (call or WhatsApp, 9 am to 10 pm) or gulabautoev@gmail.com"
 
@@ -30,13 +32,13 @@ We cannot deliver outside Maharashtra yet. Call or WhatsApp us and we will tell 
     title: "Returns, replacements and refunds",
     body: `## A part arrived damaged or does not work
 
-Tell us within 2 days of pickup or delivery, on WhatsApp at +91 98217 84847, with your order number and a photo or short video of the problem. A video of opening the parcel helps but is not required.
+Tell us within ${String(RETURNS.faultyDays)} days of pickup or delivery, on WhatsApp at +91 98217 84847, with your order number and a photo or short video of the problem. A video of opening the parcel helps but is not required.
 
 We replace the part, or refund it if we have no replacement. For courier orders, we arrange and pay for the return.
 
 ## You ordered the wrong part
 
-Bring or send it back within 7 days, unused, in its original packing, with the order number. We exchange it for the right part or refund it. For a wrong part ordered by you, the courier charge to return it is yours.
+Bring or send it back within ${String(RETURNS.wrongPartDays)} days, unused, in its original packing, with the order number. We exchange it for the right part or refund it. For a wrong part ordered by you, the courier charge to return it is yours.
 
 ## Parts we cannot take back
 

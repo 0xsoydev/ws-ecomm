@@ -1,11 +1,13 @@
 import { ChevronRight, MapPin, Store } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
+import { vehicleOptions } from "@/components/Listing"
 import OpenStatus from "@/components/OpenStatus"
 import Placeholder from "@/components/Placeholder"
 import ProductCard from "@/components/ProductCard"
 import ProductImage from "@/components/ProductImage"
 import WhatsAppLink from "@/components/WhatsAppLink"
+import YourVehicle from "@/components/YourVehicle"
 import { jsonLd, localBusiness, website } from "@/lib/jsonld"
 import { catalog, storeInfo, type Tile } from "@/lib/storefront"
 import { button } from "@/lib/ui"
@@ -84,6 +86,7 @@ export default async function Home() {
           Shop by scooter
         </h2>
         <ul className="mt-2 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-0">
+          <YourVehicle options={vehicleOptions(data.models).map((v, i) => ({ key: v.key, label: v.label, href: `/v/${data.models[i]?.brandSlug ?? ""}/${data.models[i]?.slug ?? ""}` }))} />
           {brands.map(([slug, name]) => (
             <li key={slug} className="snap-start">
               <Link

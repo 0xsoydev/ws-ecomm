@@ -21,6 +21,12 @@ export function unitPrice(p: Priced, qty: number): { paise: number; tier: Tier }
   return qty >= p.moq || p.retailPaise === null ? { paise: p.wholesalePaise, tier: "wholesale" } : { paise: p.retailPaise, tier: "retail" }
 }
 
+export function validQty(p: Priced, typed: number) {
+  const min = minQty(p)
+  const top = MAX_LINE_QTY - (MAX_LINE_QTY % p.orderStep)
+  return Math.min(top, Math.max(min, Math.ceil(typed / p.orderStep) * p.orderStep))
+}
+
 export function nextBreak(p: Priced, qty: number) {
   return p.retailPaise !== null && qty < p.moq ? { addQty: p.moq - qty, paise: p.wholesalePaise } : null
 }

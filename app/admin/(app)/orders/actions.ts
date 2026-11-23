@@ -53,6 +53,8 @@ export async function moveStage(raw: unknown) {
   return run(z.object({ id: idSchema, from: stageSchema, to: z.enum(["packed", "ready_for_pickup", "delivered", "picked_up"]) }), raw, async (tx, actor, v) => {
     const order = await locked(tx, v.id)
     if (order.stage !== v.from) throw new Error("The order changed. Refresh and try again.")
+    if ((v.to === "packed" || v.to === "delivered") && order.delivery === "pickup") throw new Error("This order is picked up at the shop.")
+    if ((v.to === "ready_for_pickup" || v.to === "picked_up") && order.delivery !== "pickup") throw new Error("This order goes by courier.")
     if ((v.to === "packed" || v.to === "ready_for_pickup") && order.method === "upi_manual" && order.payment !== "paid") throw new Error("Record the UPI payment first.")
     if (v.to === "picked_up" && order.method === "pay_at_store") {
       await tx.update(orders).set({ payment: "paid" }).where(eq(orders.id, v.id))
@@ -78,8 +80,23 @@ export async function confirmOrder(raw: unknown) {
           .where(eq(orders.id, v.id))
       }
     }
+    const lines = await tx.select().from(orderItems).where(and(eq(orderItems.orderId, v.id), eq(orderItems.reserved, false)))
+    const ids = [...new Set(lines.map((l) => l.productId))].sort((a, b) => a - b)
+    const stock = new Map<number, { name: string; stock: number | null }>()
+    for (const pid of ids) {
+      const [p] = await tx.select({ name: products.name, stock: products.stock }).from(products).where(eq(products.id, pid)).for("update")
+      if (p) stock.set(pid, p)
+    }
+    const tracked = lines.filter((l) => stock.get(l.productId)?.stock != null)
+    const short = tracked.filter((l) => (stock.get(l.productId)?.stock ?? 0) < l.qty)
+    if (short.length) throw new Error(`Not enough stock for ${short.map((l) => stock.get(l.productId)?.name ?? l.name).join(", ")}. Update the stock or cancel the order.`)
+    for (const l of tracked) {
+      await tx.update(products).set({ stock: sql`${products.stock} - ${l.qty}` }).where(eq(products.id, l.productId))
+      await tx.update(orderItems).set({ reserved: true }).where(eq(orderItems.id, l.id))
+      await tx.insert(stockMovements).values({ productId: l.productId, delta: -l.qty, reason: "sold_online", orderId: v.id, actorId: actor })
+    }
     await move(tx, v.id, order.stage, "confirmed", actor, { delivery: v.deliveryPaise })
-    return undefined
+    return [...new Set(tracked.map((l) => l.productId))]
   })
 }
 
@@ -87,7 +104,7 @@ export async function cancelOrder(raw: unknown) {
   return run(z.object({ id: idSchema, reason: z.string().trim().min(3, "Give a reason").max(200) }), raw, async (tx, actor, v) => {
     const order = await locked(tx, v.id)
     if (!next[order.stage].includes("cancelled")) throw new Error("This order can no longer be cancelled here.")
-    if (order.payment !== "unpaid" && order.payment !== "pay_at_store") throw new Error("This order has a payment. Refund it first, then cancel.")
+    if (order.payment !== "unpaid") throw new Error("This order has a payment. Refund it first, then cancel.")
     const lines = await tx.select().from(orderItems).where(and(eq(orderItems.orderId, v.id), eq(orderItems.reserved, true)))
     const ids = [...new Set(lines.map((l) => l.productId))].sort((a, b) => a - b)
     for (const pid of ids) await tx.select({ id: products.id }).from(products).where(eq(products.id, pid)).for("update")
@@ -124,6 +141,7 @@ export async function markShipped(raw: unknown) {
   const schema = z.object({ id: idSchema, courier: z.string().trim().min(2, "Enter the courier").max(60), awb: z.string().trim().min(4, "Enter the tracking number").max(40), trackingUrl: z.union([z.literal(""), z.url()]) })
   return run(schema, raw, async (tx, actor, { id, courier, awb, trackingUrl }) => {
     const order = await locked(tx, id)
+    if (order.delivery === "pickup") throw new Error("This order is picked up at the shop.")
     if (order.stage !== "packed") throw new Error("Mark the order packed first.")
     await tx.insert(shipments).values({ orderId: id, courier, awb, trackingUrl: trackingUrl || null, status: "shipped" })
     await tx.insert(orderEvents).values({ orderId: id, type: "shipment", actorId: actor, data: { courier, awb } })

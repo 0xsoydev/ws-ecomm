@@ -20,7 +20,7 @@ test("every page type has one clean title and a canonical", async ({ page }) => 
     expect(title, path).not.toMatch(/WS Green.*WS Green/)
     expect(title, path).not.toContain("DP13 OLA REAR")
     titles.add(title)
-    await expect(page.locator('link[rel="canonical"]'), path).toHaveAttribute("href", new RegExp(`${path === "/" ? "" : path}$`))
+    await expect(page.locator('link[rel="canonical"]'), path).toHaveAttribute("href", new RegExp(`${path === "/" ? "" : path === "/v/ola" ? "/v/ola/s1" : path}$`))
     await expect(page.locator('meta[name="description"]'), path).toHaveAttribute("content", /.{40,}/)
   }
   expect(titles.size).toBe(9)

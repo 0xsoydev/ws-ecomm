@@ -1,5 +1,7 @@
 import { catalog } from "@/lib/storefront"
 
 export async function GET() {
-  return Response.json(await catalog(), { headers: { "Cache-Control": "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800" } })
+  const data = await catalog()
+  const tiles = data.tiles.map((t) => ({ ...t, compliant: undefined, approved: undefined }))
+  return Response.json({ ...data, tiles }, { headers: { "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=3600" } })
 }

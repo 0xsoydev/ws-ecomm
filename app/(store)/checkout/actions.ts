@@ -1,9 +1,8 @@
 "use server"
 
-import { createHash, createHmac, randomBytes } from "node:crypto"
-import { and, count, eq, gt, gte, inArray, sql } from "drizzle-orm"
+import { createHash, createHmac } from "node:crypto"
+import { and, count, eq, gt, inArray, sql } from "drizzle-orm"
 import { cookies, headers } from "next/headers"
-import { updateTag } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
 import { BUSINESS } from "@/lib/business"
@@ -16,7 +15,7 @@ import { collectsTax, regimeAt } from "@/lib/gst"
 import { isMaharashtraPincode, orderMessage, orderNumber } from "@/lib/orders"
 import { unitPrice } from "@/lib/pricing"
 import { withinLimit } from "@/lib/ratelimit"
-import { customers, orderCharges, orderEvents, orderItems, orders, products, stockMovements, units } from "@/lib/schema"
+import { customers, orderCharges, orderEvents, orderItems, orders, products, units } from "@/lib/schema"
 import { getSettings } from "@/lib/settings"
 import { todayInIndia } from "@/lib/time"
 
@@ -34,6 +33,8 @@ const input = z
     landmark: optional(80),
     city: optional(60),
     pincode: optional(6),
+    business: optional(120).default(""),
+    gstin: z.union([z.literal(""), z.string().regex(/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/, "Enter a valid 15-character GSTIN, or leave it empty")]).default(""),
     payment: z.enum(["pay_at_store", "upi_manual"]),
     note: optional(500),
     whatsappUpdates: z.boolean(),
@@ -77,10 +78,15 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
   const phoneHash = createHmac("sha256", env.PHONE_PEPPER).update(v.phone).digest("hex")
   const requestHash = createHash("sha256").update(JSON.stringify({ ...v, idempotencyKey: undefined })).digest("hex")
 
-  const [existing] = await db.select({ id: orders.id, requestHash: orders.requestHash }).from(orders).where(eq(orders.idempotencyKey, v.idempotencyKey))
-  if (existing) {
-    return existing.requestHash === requestHash ? { ok: true, number: orderNumber(existing.id) } : { ok: false, kind: "message", message: "This order was already placed. Refresh the page to start a new one." }
+  const secret = createHmac("sha256", env.BETTER_AUTH_SECRET).update(`order:${v.idempotencyKey}`).digest("base64url")
+  const opened = async (id: number): Promise<CheckoutResult> => {
+    const jar = await cookies()
+    jar.set(`ws_order_${String(id)}`, secret, { httpOnly: true, sameSite: "lax", secure: env.NODE_ENV === "production", path: `/order/${orderNumber(id)}`, maxAge: 30 * 24 * 3600 })
+    return { ok: true, number: orderNumber(id) }
   }
+
+  const [existing] = await db.select({ id: orders.id }).from(orders).where(eq(orders.idempotencyKey, v.idempotencyKey))
+  if (existing) return opened(existing.id)
 
   const [[recent], ipOk] = await Promise.all([
     db
@@ -100,7 +106,6 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
   for (const l of v.lines) merged.set(l.id, { qty: (merged.get(l.id)?.qty ?? 0) + l.qty, unitPaise: l.unitPaise })
   const ids = [...merged.keys()].sort((a, b) => a - b)
 
-  const secret = randomBytes(32).toString("base64url")
   try {
     const placed = await db.transaction(async (tx) => {
       const rows = await tx
@@ -139,13 +144,6 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
       const fee = v.delivery === "ship" ? courierFee(settings, itemsPaise) : 0
       if (itemsPaise < settings.minOrderPaise) throw new Refusal({ ok: false, kind: "message", message: `The minimum order is ₹${String(settings.minOrderPaise / 100)}.` })
 
-      for (const l of priced) {
-        if (l.row.product.stock === null) continue
-        await tx
-          .update(products)
-          .set({ stock: sql`${products.stock} - ${l.qty}` })
-          .where(and(eq(products.id, l.row.product.id), gte(products.stock, l.qty)))
-      }
 
       const [customer] = await tx
         .insert(customers)
@@ -164,7 +162,7 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
           payment: "unpaid",
           method: v.payment,
           delivery: v.delivery,
-          contact: { name: v.name, phone: v.phone, email: v.email === "" ? null : v.email, businessName: null, gstin: null },
+          contact: { name: v.name, phone: v.phone, email: v.email === "" ? null : v.email, businessName: v.business || null, gstin: v.gstin || null },
           shipTo:
             v.delivery === "ship"
               ? { name: v.name, phone: v.phone, line1: v.line1, line2: v.line2, landmark: v.landmark, city: v.city, state: "Maharashtra", stateCode: "27", pincode: v.pincode }
@@ -202,13 +200,11 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
           linePaise: l.price.paise * l.qty,
           taxablePaise: l.price.paise * l.qty,
           taxPaise: 0,
-          reserved: l.row.product.stock !== null,
+          reserved: false,
           fulfilment: l.row.product.fulfilment,
         })),
       )
       if (fee) await tx.insert(orderCharges).values({ orderId: order.id, kind: "shipping", amountPaise: fee, gstRateBps: 0, taxablePaise: fee, taxPaise: 0 })
-      const reserved = priced.filter((l) => l.row.product.stock !== null)
-      if (reserved.length) await tx.insert(stockMovements).values(reserved.map((l) => ({ productId: l.row.product.id, delta: -l.qty, reason: "sold_online" as const, orderId: order.id })))
       await tx.insert(orderEvents).values({ orderId: order.id, type: "placed", data: { delivery: v.delivery, method: v.payment, items: itemsPaise } })
       const text = orderMessage({
         number: orderNumber(order.id),
@@ -221,21 +217,19 @@ export async function placeOrder(raw: unknown): Promise<CheckoutResult> {
         pincode: v.delivery === "ship" ? v.pincode : null,
         link: `${publicEnv.NEXT_PUBLIC_SITE_URL}/admin/orders/${String(order.id)}`,
       })
-      return { id: order.id, text, tracked: reserved.map((l) => l.row.product.id) }
+      return { id: order.id, text }
     })
     const { id } = placed
-    if (emailConfigured) after(() => sendEmail({ to: BUSINESS.email, subject: `New order ${orderNumber(id)} from ${v.name}`, text: `${placed.text}${v.note ? `\nNote: ${v.note}` : ""}` }))
+    if (emailConfigured) after(() => sendEmail({ to: BUSINESS.email, subject: `New order ${orderNumber(id)} from ${v.name}`, text: `${placed.text}${v.note ? `\nNote: ${v.note}` : ""}` }).catch((e: unknown) => {
+        console.error(`order ${orderNumber(id)} email failed`, e)
+      }))
 
-    const jar = await cookies()
-    jar.set(`ws_order_${String(id)}`, secret, { httpOnly: true, sameSite: "lax", secure: env.NODE_ENV === "production", path: `/order/${orderNumber(id)}`, maxAge: 30 * 24 * 3600 })
-    for (const pid of placed.tracked) updateTag(`product:${String(pid)}`)
-    if (placed.tracked.length) updateTag("catalog")
-    return { ok: true, number: orderNumber(id) }
+    return await opened(id)
   } catch (e) {
     if (e instanceof Refusal) return e.result
     if (violated(e) === "orders_idempotencyKey_unique") {
       const [again] = await db.select({ id: orders.id }).from(orders).where(eq(orders.idempotencyKey, v.idempotencyKey))
-      if (again) return { ok: true, number: orderNumber(again.id) }
+      if (again) return opened(again.id)
     }
     throw e
   }

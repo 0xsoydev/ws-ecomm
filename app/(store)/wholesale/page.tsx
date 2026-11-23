@@ -16,16 +16,17 @@ export const metadata: Metadata = {
 
 export default async function WholesalePage() {
   const [data, info] = await Promise.all([catalog(), storeInfo()])
-  const bulk = data.tiles.filter((t) => t.purchasable && t.priced.moq > 1).slice(0, 8)
+  const breaks = data.tiles.filter((t) => t.purchasable && t.priced.retailPaise !== null && hasRetailTier(t.priced))
+  const bulk = (breaks.length ? breaks : data.tiles.filter((t) => t.purchasable && t.priced.moq > 1)).slice(0, 8)
   const example = data.tiles.find((t) => t.approved && t.priced.retailPaise !== null && hasRetailTier(t.priced) && t.priced.moq >= 3)
   return (
-    <div className="mx-auto max-w-[1000px] px-4 sm:px-6">
+    <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
       <PageHead back={{ href: "/", label: "Home" }} title="Wholesale prices, no account needed">
         <p className="max-w-[60ch] text-muted">Every part has a break quantity. Buy that many or more and every piece is charged at the wholesale price.</p>
       </PageHead>
       <ol className="mt-6 flex flex-col gap-5">
         {[
-          ["Find the break", "Each part shows its wholesale price and the quantity it starts from, for example 5 pcs."],
+          ["Find the break", "Parts with a wholesale break show both prices, for example ₹150 for 1 and ₹120 each from 2. Parts sold by the pack show one price and a minimum."],
           ["Buy that many or more", "The whole line drops to the wholesale price. Mix as many different parts as you like."],
           ["Pick up or ask for delivery", `${info.scope}. Larger orders get a cash memo with every item listed.`],
         ].map(([title, body], i) => (
@@ -56,7 +57,7 @@ export default async function WholesalePage() {
       {bulk.length ? (
         <section aria-labelledby="bulk-parts" className="mt-10">
           <h2 id="bulk-parts" className="text-xl">
-            Parts with a quantity price
+            {breaks.length ? "Parts with a wholesale break" : "Parts sold by the pack"}
           </h2>
           <ul className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
             {bulk.map((t) => (

@@ -2,10 +2,10 @@
 
 import { SlidersHorizontal, X } from "lucide-react"
 import Link from "next/link"
-import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs"
+import { parseAsArrayOf, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs"
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { applyFilter, BODY_LABELS, BODY_STYLES, facetCounts, SORT_LABELS, SORTS, type BodyStyle, type Filterable, type ListingFilter, type Sort } from "@/lib/listing"
+import { applyFilter, BODY_LABELS, BODY_STYLES, FACET_KEYS, facetCounts, facetKey, SORT_LABELS, SORTS, type BodyStyle, type Filterable, type ListingFilter, type Sort } from "@/lib/listing"
 import { useStored, writeStored } from "@/lib/use-stored"
 import { button, chip } from "@/lib/ui"
 import { partsCount } from "@/lib/format"
@@ -21,6 +21,7 @@ const query = {
   vehicle: parseAsString,
   body: parseAsStringLiteral(BODY_STYLES),
   stock: parseAsBoolean.withDefault(false),
+  spec: parseAsArrayOf(parseAsString).withDefault([]),
   sort: parseAsStringLiteral(SORTS).withDefault("recommended"),
 }
 
@@ -29,8 +30,8 @@ type Props = { sections: ListingSection[]; vehicles: VehicleOption[]; chips: Chi
 export default function ListingClient(props: Props) {
   const [q, setQ] = useQueryStates(query, { history: "replace", scroll: false })
   const vehicle = props.vehicles.find((v) => v.key === q.vehicle) ?? null
-  const filter: ListingFilter = { vehicle: vehicle?.id ?? null, body: q.body, stock: q.stock, sort: q.sort }
-  const set = (next: Partial<{ vehicle: string | null; body: BodyStyle | null; stock: boolean; sort: Sort }>) => void setQ(next)
+  const filter: ListingFilter = { vehicle: vehicle?.id ?? null, body: q.body, stock: q.stock, specs: q.spec, sort: q.sort }
+  const set = (next: Partial<{ vehicle: string | null; body: BodyStyle | null; stock: boolean; spec: string[]; sort: Sort }>) => void setQ(next)
   return <ListingView {...props} filter={filter} vehicle={vehicle} set={set} />
 }
 
@@ -45,7 +46,7 @@ export function ListingView({
 }: Props & {
   filter: ListingFilter
   vehicle: VehicleOption | null
-  set?: (next: Partial<{ vehicle: string | null; body: BodyStyle | null; stock: boolean; sort: Sort }>) => void
+  set?: (next: Partial<{ vehicle: string | null; body: BodyStyle | null; stock: boolean; spec: string[]; sort: Sort }>) => void
 }) {
   const [sheet, setSheet] = useState(false)
   const [opened, setOpened] = useState(false)
@@ -63,8 +64,14 @@ export function ListingView({
     vehicle ? { label: vehicle.label, clear: () => { set({ vehicle: null }); } } : null,
     filter.body ? { label: BODY_LABELS[filter.body], clear: () => { set({ body: null }); } } : null,
     filter.stock ? { label: "In stock", clear: () => { set({ stock: false }); } } : null,
+    ...filter.specs.map((s) => ({ label: s.slice(s.indexOf("=") + 1), clear: () => { set({ spec: filter.specs.filter((x) => x !== s) }); } })),
   ].flatMap((a) => (a ? [a] : []))
-  const clearAll = () => { set({ vehicle: null, body: null, stock: false, sort: "recommended" }); }
+  const clearAll = () => { set({ vehicle: null, body: null, stock: false, spec: [], sort: "recommended" }); }
+  const toggleSpec = (key: string) => { set({ spec: filter.specs.includes(key) ? filter.specs.filter((x) => x !== key) : [...filter.specs, key] }); }
+  const specGroups = FACET_KEYS.flatMap((k) => {
+    const values = [...(counts.specs.get(k) ?? new Map<string, number>()).entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))
+    return values.length >= 2 && values.length <= 16 ? [{ key: k, values }] : []
+  })
   const visibleVehicles = vehicles.filter((v) => counts.vehicles.has(v.id) || v.id === filter.vehicle)
   const bodies = BODY_STYLES.filter((b) => counts.bodies.has(b) || b === filter.body)
 
@@ -75,19 +82,35 @@ export function ListingView({
           <legend className="mb-2 font-semibold">Vehicle</legend>
           <div className="flex flex-wrap gap-2">
             {visibleVehicles.map((v) => (
-              <button key={v.key} type="button" aria-pressed={filter.vehicle === v.id} onClick={() => { set({ vehicle: filter.vehicle === v.id ? null : v.key }); }} className={`${chip(filter.vehicle === v.id)} h-9`}>
+              <button key={v.key} type="button" aria-pressed={filter.vehicle === v.id} onClick={() => { set({ vehicle: filter.vehicle === v.id ? null : v.key }); }} className={`${chip(filter.vehicle === v.id)} h-11 lg:h-9`}>
                 {v.label} <span className="ml-1.5 opacity-70">{counts.vehicles.get(v.id) ?? 0}</span>
               </button>
             ))}
           </div>
         </fieldset>
       ) : null}
+      {specGroups.map((g) => (
+        <fieldset key={g.key} className="flex flex-col gap-2">
+          <legend className="mb-2 font-semibold">{g.key}</legend>
+          <div className="flex flex-wrap gap-2">
+            {g.values.map(([value, n]) => {
+              const key = facetKey(g.key, value)
+              const on = filter.specs.includes(key)
+              return (
+                <button key={value} type="button" aria-pressed={on} onClick={() => { toggleSpec(key); }} className={`${chip(on)} h-11 lg:h-9`}>
+                  {value} <span className="ml-1.5 opacity-70">{n}</span>
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
+      ))}
       {bodies.length ? (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 font-semibold">Body style</legend>
           <div className="flex flex-wrap gap-2">
             {bodies.map((b) => (
-              <button key={b} type="button" aria-pressed={filter.body === b} onClick={() => { set({ body: filter.body === b ? null : b }); }} className={`${chip(filter.body === b)} h-9`}>
+              <button key={b} type="button" aria-pressed={filter.body === b} onClick={() => { set({ body: filter.body === b ? null : b }); }} className={`${chip(filter.body === b)} h-11 lg:h-9`}>
                 {BODY_LABELS[b]} <span className="ml-1.5 opacity-70">{counts.bodies.get(b) ?? 0}</span>
               </button>
             ))}

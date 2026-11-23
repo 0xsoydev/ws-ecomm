@@ -1,4 +1,4 @@
-import { BUSINESS } from "./business"
+import { BUSINESS, RETURNS } from "./business"
 import { publicEnv } from "./env.public"
 import type { Hours } from "./time"
 
@@ -40,7 +40,7 @@ export function breadcrumbs(items: readonly { name: string; path: string }[]) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: it.name, item: `${site}${it.path}` })),
+    itemListElement: [{ name: "Home", path: "/" }, ...items].map((it, i) => ({ "@type": "ListItem", position: i + 1, name: it.name, item: `${site}${it.path}` })),
   }
 }
 
@@ -88,7 +88,7 @@ export function productNode(p: ProductInput) {
       itemCondition: "https://schema.org/NewCondition",
       availability: p.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@id": `${site}/#business` },
-      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "IN", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 7, returnMethod: ["https://schema.org/ReturnInStore", "https://schema.org/ReturnByMail"], merchantReturnLink: `${site}/pages/returns` },
+      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "IN", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: RETURNS.wrongPartDays, returnMethod: ["https://schema.org/ReturnInStore", "https://schema.org/ReturnByMail"], merchantReturnLink: `${site}/pages/returns` },
       availableDeliveryMethod: p.pickupOnly ? "https://schema.org/OnSitePickup" : undefined,
     },
   }
