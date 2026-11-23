@@ -113,3 +113,26 @@ test("a remembered vehicle shows on the home page, and its own page doesn't offe
   await page.goto("/")
   await expect(page.getByRole("link", { name: "Your Ola S1" })).toBeInViewport()
 })
+
+test("scrolling a listing never jumps backwards, and the product page keeps its height", async ({ page }) => {
+  await page.goto("/c/batteries-bms")
+  await expect(page.getByRole("navigation", { name: "Jump to section" })).toBeVisible()
+  await page.evaluate(() => {
+    document.body.dataset.ys = ""
+    addEventListener("scroll", () => (document.body.dataset.ys = `${document.body.dataset.ys ?? ""}${String(scrollY)} `), { passive: true })
+  })
+  for (let i = 0; i < 12; i++) {
+    await page.mouse.wheel(0, 150)
+    await page.waitForTimeout(60)
+  }
+  await page.waitForTimeout(600)
+  const ys = (await page.evaluate(() => document.body.dataset.ys ?? "")).trim().split(" ").map(Number)
+  expect(ys.length).toBeGreaterThan(3)
+  expect(ys.filter((y, i) => i > 0 && y < (ys[i - 1] ?? 0))).toEqual([])
+
+  await page.goto("/p/disc-pad-dp13-ola-rear")
+  const start = await page.evaluate(() => document.documentElement.scrollHeight)
+  for (let i = 0; i < 10; i++) await page.mouse.wheel(0, 300)
+  await page.waitForTimeout(500)
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(start)
+})

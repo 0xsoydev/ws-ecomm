@@ -18,6 +18,7 @@ for (const scheme of ["light", "dark"] as const) {
 
 test("the card Add button shows a visible focus ring", async ({ page }) => {
   await page.goto("/c/batteries-bms")
+  await page.waitForLoadState("networkidle")
   const add = page.getByRole("button", { name: /^Add .* to cart$/ }).filter({ visible: true }).first()
   await page.keyboard.press("Tab")
   await add.focus()

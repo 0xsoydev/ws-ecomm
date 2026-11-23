@@ -261,13 +261,16 @@ function ChipRail({ chips, sections }: { chips: ChipLink[] | "spy"; sections: { 
   }, [chips, sections.length])
   useEffect(() => {
     if (!current) return
-    document.getElementById(`chip-${current}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })
+    const chip = document.getElementById(`chip-${current}`)
+    const rail = chip?.closest("ul")
+    if (!chip || !rail) return
+    rail.scrollTo({ left: chip.offsetLeft - (rail.clientWidth - chip.offsetWidth) / 2, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })
   }, [current])
   const items = chips === "spy" ? sections.map((s) => ({ key: s.slug, label: s.name, href: `#s-${s.slug}`, active: current === s.slug })) : chips.map((c) => ({ key: c.href, label: c.label, href: c.href, active: c.active }))
   if (items.length < 2) return null
   return (
     <nav aria-label={chips === "spy" ? "Jump to section" : "Subcategories"} className="sticky top-(--header-h) z-20 -mx-4 border-b border-line bg-bg px-4 transition-[top] duration-200 ease-out sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-      <ul className="flex gap-2 overflow-x-auto py-2.5 [scrollbar-width:none]">
+      <ul className="relative flex gap-2 overflow-x-auto py-2.5 [scrollbar-width:none]">
         {items.map((c) =>
           chips === "spy" ? (
             <li key={c.key}>

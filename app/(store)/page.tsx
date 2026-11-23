@@ -38,7 +38,7 @@ export default async function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd([website(), localBusiness(info.weeklyHours, info.scope)])} />
 
       <nav aria-label="Shop by category" className="mx-auto max-w-[1200px] pt-4 sm:px-6 lg:pt-8">
-        <ul className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-8 sm:overflow-visible sm:px-0">
+        <ul className="flex snap-x snap-proximity scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-8 sm:overflow-visible sm:px-0">
           {data.systems.map((s) => {
             const lead = bySystem.get(s.slug)?.find((t) => t.image)
             return (
@@ -89,7 +89,7 @@ export default async function Home() {
           </h2>
           <YourVehicle options={vehicleOptions(data.models)} />
         </div>
-        <ul className="mt-2 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-0">
+        <ul className="mt-2 flex snap-x snap-proximity scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-0">
           {brands.map(([slug, name]) => (
             <li key={slug} className="snap-start">
               <Link
@@ -120,7 +120,7 @@ export default async function Home() {
               <ChevronRight aria-hidden className="size-4" strokeWidth={2} />
             </Link>
           </div>
-          <ul className="mt-3 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
+          <ul className="mt-3 flex snap-x snap-proximity scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
             {(bySystem.get(s.slug) ?? []).slice(0, PER_RAIL).map((t, i) => (
               <li key={t.id} className={`flex w-[44%] shrink-0 snap-start sm:w-auto ${i >= 5 ? "lg:hidden" : ""} ${i >= 6 ? "sm:hidden" : ""}`}>
                 <ProductCard tile={t} sizes="(min-width: 1024px) 220px, (min-width: 640px) 30vw, 44vw" />

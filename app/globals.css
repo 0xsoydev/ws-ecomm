@@ -92,14 +92,12 @@
     background: var(--bg);
     color: var(--ink);
     -webkit-text-size-adjust: 100%;
-    text-rendering: optimizeLegibility;
   }
 
   body {
     font-family: var(--font-sans);
     font-weight: 450;
     line-height: 1.55;
-    overscroll-behavior-y: none;
   }
 
   h1,

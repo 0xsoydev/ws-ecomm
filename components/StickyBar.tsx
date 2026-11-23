@@ -23,7 +23,7 @@ export default function StickyBar({ targetId, label, children }: { targetId: str
       aria-label={label}
       aria-hidden={!show}
       inert={!show}
-      data-bar={show ? "purchase" : undefined}
+      data-bar="purchase"
       className={`fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-16px_rgb(21_25_22/0.35)] transition-transform duration-250 ease-out lg:hidden ${show ? "translate-y-0" : "translate-y-full"}`}
     >
       {children}
