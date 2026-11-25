@@ -7,7 +7,6 @@ import BrandRail from "@/components/BrandRail"
 import OpenStatus from "@/components/OpenStatus"
 import Placeholder from "@/components/Placeholder"
 import ProductCard from "@/components/ProductCard"
-import ProductImage from "@/components/ProductImage"
 import WhatsAppLink from "@/components/WhatsAppLink"
 import YourVehicle from "@/components/YourVehicle"
 import { brandTiles } from "@/lib/brands"
@@ -22,7 +21,7 @@ const FLAGSHIP = "batteries-bms"
 const BENTO = [
   { title: "Lithium-ion batteries", line: "18650 cells, holders and battery-building parts", system: "batteries-bms", cats: ["battery-packs", "cells-holders", "battery-accessories"], lead: "lithium-ion-cell-2600mah-dmegc-pack-of-200", photo: null, big: true },
   { title: "BMS", line: "48V and 60V battery management boards", system: "batteries-bms", cats: ["bms-48v", "bms-60v"], lead: null, photo: "fill:site/bento-bms", big: false },
-  { title: "Converters & controllers", line: "Motor controllers and DC converters", system: "electricals", cats: ["controllers", "converters"], lead: null, photo: null, big: false },
+  { title: "Converters & controllers", line: "Motor controllers and DC converters", system: "electricals", cats: ["controllers", "converters"], lead: "controller-calc-smart-48-60-72v-plus-30a", photo: null, big: false },
 ] as const
 const PER_RAIL = 6
 
@@ -39,9 +38,9 @@ export default async function Home() {
   const categoryIds = new Map(data.categories.map((c) => [c.slug, c.id]))
   const bento = BENTO.map((b) => {
     const lists = b.cats.map((c) => ranked(data.tiles.filter((t) => t.categoryId === categoryIds.get(c))))
-    const pool = lists.find((l) => l.some((t) => t.image)) ?? []
+    const pool = lists.flat()
     const lead = pool.find((t) => t.slug === b.lead && t.image) ?? pool.find((t) => t.image)
-    return { ...b, count: lists.flat().length, image: lead?.image ?? null }
+    return { ...b, count: lists.flat().length, art: b.photo ?? (lead?.image ? `fill:e_make_transparent:12/${lead.image.publicId}` : null) }
   })
   const rails = [...data.systems]
     .filter((s) => s.count > 0)
@@ -88,16 +87,16 @@ export default async function Home() {
               <Link
                 href={`/c/${b.system}?show=${b.cats.join(",")}`}
                 prefetch={true}
-                className="group relative flex h-full flex-col overflow-hidden rounded-container border border-line bg-well p-4 text-on-well no-underline transition-transform duration-200 ease-out active:scale-[0.98] sm:p-5 lg:p-6"
+                className="group relative flex h-full flex-col overflow-hidden rounded-container border border-line bg-surface p-4 no-underline transition-transform duration-200 ease-out active:scale-[0.98] sm:p-5 lg:p-6"
               >
                 <span className={`relative z-10 font-semibold text-balance ${b.big ? "max-w-[12ch] text-2xl leading-[1.05] tracking-[-0.02em] sm:text-3xl lg:text-4xl" : "max-w-[14ch] text-lg leading-tight sm:text-xl lg:text-2xl"}`}>{b.title}</span>
-                <span className={`relative z-10 mt-1.5 text-sm text-on-well-muted ${b.big ? "max-w-[28ch]" : "hidden max-w-[24ch] lg:block"}`}>{b.line}</span>
+                <span className={`relative z-10 mt-1.5 text-sm text-muted ${b.big ? "max-w-[28ch]" : "hidden max-w-[24ch] lg:block"}`}>{b.line}</span>
                 <span className="relative z-10 mt-auto inline-flex items-center gap-0.5 text-sm font-medium [@media(hover:hover)]:group-hover:underline">
                   {partsCount(b.count)}
                   <ChevronRight aria-hidden className="size-4" strokeWidth={2} />
                 </span>
-                <span aria-hidden className={`absolute transition-transform duration-300 ease-out [@media(hover:hover)]:group-hover:scale-[1.04] ${b.photo ? "-right-[6%] -bottom-[10%] h-[80%] w-[86%] sm:h-[82%] sm:w-[58%] lg:h-[96%] lg:w-[58%]" : `right-0 bottom-0 [&_img]:mix-blend-multiply ${b.big ? "h-[72%] w-[64%] sm:h-[78%]" : "h-[62%] w-[78%] sm:h-[58%] sm:w-[46%] lg:h-[74%] lg:w-[52%]"}`}`}>
-                  {b.photo ? <Image src={b.photo} alt="" fill sizes="(min-width: 1024px) 260px, (min-width: 640px) 180px, 40vw" className="object-contain" /> : b.image ? <ProductImage image={b.image} alt="" sizes={b.big ? "(min-width: 640px) 440px, 68vw" : "(min-width: 640px) 220px, 30vw"} preload={b.big} /> : <Placeholder systemSlug={b.system} code={null} size="tile" />}
+                <span aria-hidden className={`absolute transition-transform duration-300 ease-out [@media(hover:hover)]:group-hover:scale-[1.04] ${b.photo ? "-right-[16%] -bottom-[34%] h-[110%] w-[106%] -rotate-[40deg] sm:h-[110%] sm:w-[72%] lg:h-[128%] lg:w-[72%]" : `right-0 bottom-0 ${b.big ? "h-[72%] w-[64%] sm:h-[78%]" : "h-[62%] w-[78%] sm:h-[58%] sm:w-[46%] lg:h-[74%] lg:w-[52%]"}`}`}>
+                  {b.art ? <Image src={b.art} alt="" fill sizes={b.big ? "(min-width: 640px) 440px, 68vw" : "(min-width: 1024px) 260px, (min-width: 640px) 180px, 40vw"} preload={b.big} className="object-contain" /> : <Placeholder systemSlug={b.system} code={null} size="tile" />}
                 </span>
               </Link>
             </li>
