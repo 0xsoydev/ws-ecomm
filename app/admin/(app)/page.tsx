@@ -1,11 +1,12 @@
-import { sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { ChevronRight } from "lucide-react"
+import type { Route } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
 import { requireRole, rolesOf } from "@/lib/auth"
 import { ISSUES, purchasableIssues, type Issue } from "@/lib/catalog"
 import { db } from "@/lib/db"
-import { productImages, products } from "@/lib/schema"
+import { productImages, products, productVehicles } from "@/lib/schema"
 import { getSettings, purchasableContext } from "@/lib/settings"
 import { SignOutButton } from "./sign-out-button"
 
@@ -35,7 +36,7 @@ function ReadinessSkeleton() {
   )
 }
 
-function Meter({ label, value, total, floor, href, action }: { label: string; value: number; total: number; floor?: number; href: "/admin/products/pricing" | "/admin/photos" | "/admin/products/fix"; action: string }) {
+function Meter({ label, value, total, floor, href, action }: { label: string; value: number; total: number; floor?: number; href: Route; action: string }) {
   const pct = total === 0 ? 0 : Math.round((value / total) * 100)
   const met = floor === undefined ? value === total : pct >= floor
   return (
@@ -64,7 +65,7 @@ function Meter({ label, value, total, floor, href, action }: { label: string; va
 
 async function Readiness() {
   const { user } = await requireRole("owner", "staff")
-  const [rows, ctx, current, [images]] = await Promise.all([
+  const [rows, ctx, current, [images], [fits]] = await Promise.all([
     db
       .select({
         status: products.status,
@@ -84,6 +85,7 @@ async function Readiness() {
     purchasableContext(),
     getSettings(),
     db.select({ unsorted: sql<number>`count(*) filter (where not ${productImages.classified})::int` }).from(productImages),
+    db.select({ unchecked: sql<number>`count(distinct ${productVehicles.productId})::int` }).from(productVehicles).where(eq(productVehicles.verified, false)),
   ])
   const active = rows.filter((r) => r.status === "active")
   const issues = active.map((r) => purchasableIssues(r, ctx))
@@ -99,10 +101,16 @@ async function Readiness() {
           Ready to launch
         </h2>
         <ul className="flex flex-col">
-          <Meter label="Prices approved" value={active.filter((r) => r.priceApproved).length} total={active.length} href="/admin/products/pricing" action="Approve prices" />
-          <Meter label="Own photos" value={active.filter((r) => r.ownPhoto).length} total={active.length} floor={current.launchFloors.ownPhotoPct} href="/admin/photos" action={`Sort ${String(images?.unsorted ?? 0)} photos`} />
-          <Meter label="Buyable online" value={purchasable} total={active.length} floor={current.launchFloors.purchasablePct} href="/admin/products/fix" action="Open fix queue" />
+          <Meter label="Prices approved" value={active.filter((r) => r.priceApproved).length} total={active.length} href="/admin/products?view=prices" action="Approve prices" />
+          <Meter label="Own photos" value={active.filter((r) => r.ownPhoto).length} total={active.length} floor={current.launchFloors.ownPhotoPct} href="/admin/products?view=photos" action={`Sort ${String(images?.unsorted ?? 0)} photos`} />
+          <Meter label="Buyable online" value={purchasable} total={active.length} floor={current.launchFloors.purchasablePct} href="/admin/products?view=fix" action="Open not buyable" />
         </ul>
+        {fits?.unchecked ? (
+          <Link href="/admin/products?view=vehicles" className="inline-flex items-center gap-1 self-start text-sm font-semibold">
+            Check vehicles on {fits.unchecked} {fits.unchecked === 1 ? "product" : "products"}
+            <ChevronRight aria-hidden size={16} />
+          </Link>
+        ) : null}
       </section>
       {blockers.length > 0 && (
         <section aria-labelledby="blockers" className="flex flex-col gap-3">
@@ -113,7 +121,7 @@ async function Readiness() {
             {blockers.map(([issue, n]) => (
               <li key={issue}>
                 <Link
-                  href={{ pathname: "/admin/products/fix", query: { issue } }}
+                  href={{ pathname: "/admin/products", query: { view: "fix", issue } }}
                   className="flex h-12 items-center justify-between gap-4 border-b border-line no-underline transition-colors duration-200 ease-out [@media(hover:hover)]:hover:text-muted"
                 >
                   <span>{ISSUES[issue]}</span>

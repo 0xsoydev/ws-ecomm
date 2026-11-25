@@ -2,7 +2,7 @@ import "server-only"
 import { asc, eq, sql } from "drizzle-orm"
 import { purchasableIssues } from "@/lib/catalog"
 import { db } from "@/lib/db"
-import { categories, productImages, products, systems } from "@/lib/schema"
+import { categories, productImages, products, productVehicles, systems } from "@/lib/schema"
 import { purchasableContext } from "@/lib/settings"
 
 export async function loadProductRows() {
@@ -19,7 +19,10 @@ export async function loadProductRows() {
         unit: products.unit,
         stock: products.stock,
         moq: products.moq,
+        minOrderQty: products.minOrderQty,
+        orderStep: products.orderStep,
         wholesalePaise: products.wholesalePaise,
+        proposedRetailPaise: products.proposedRetailPaise,
         retailPaise: products.retailPaise,
         maker: products.maker,
         makerAddress: products.makerAddress,
@@ -33,6 +36,8 @@ export async function loadProductRows() {
         hsn: products.hsn,
         photo: sql<string | null>`(select i.public_id from ${productImages} i where i.product_id = ${products.id} order by i.own_photo desc, i.position limit 1)`,
         ownPhoto: sql<boolean>`exists (select 1 from ${productImages} i where i.product_id = ${products.id} and i.own_photo)`,
+        unsortedPhotos: sql<number>`(select count(*) from ${productImages} i where i.product_id = ${products.id} and not i.classified)::int`,
+        uncheckedFits: sql<number>`(select count(*) from ${productVehicles} v where v.product_id = ${products.id} and not v.verified)::int`,
       })
       .from(products)
       .innerJoin(categories, eq(categories.id, products.categoryId))
@@ -51,14 +56,20 @@ export async function loadProductRows() {
     unit: r.unit,
     stock: r.stock,
     moq: r.moq,
+    minOrderQty: r.minOrderQty,
+    orderStep: r.orderStep,
     wholesalePaise: r.wholesalePaise,
     retailPaise: r.retailPaise,
+    proposedRetailPaise: r.proposedRetailPaise,
+    mrpPaise: r.mrpPaise,
     priceApproved: r.priceApproved,
     maker: r.maker,
     makerAddress: r.makerAddress,
     prePackaged: r.prePackaged,
     photo: r.photo,
     ownPhoto: r.ownPhoto,
+    unsortedPhotos: r.unsortedPhotos,
+    uncheckedFits: r.uncheckedFits,
     issues: purchasableIssues(r, ctx),
   }))
 }

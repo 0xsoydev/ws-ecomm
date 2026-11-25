@@ -1,6 +1,6 @@
 "use server"
 
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { refresh, updateTag } from "next/cache"
 import { z } from "zod"
 import { requireRole } from "@/lib/auth"
@@ -8,7 +8,7 @@ import { db } from "@/lib/db"
 import { hasRetailTier } from "@/lib/pricing"
 import { auditLog, priceHistory, products } from "@/lib/schema"
 
-const input = z
+const prices = z
   .array(z.object({ id: z.number().int().positive(), retailPaise: z.number().int().positive().nullable() }))
   .min(1)
   .max(500)
@@ -17,7 +17,7 @@ export type ApproveResult = { approved: number; errors: { id: number; message: s
 
 export async function approvePrices(raw: unknown): Promise<ApproveResult> {
   const { user } = await requireRole("owner")
-  const items = input.parse(raw)
+  const items = prices.parse(raw)
   const errors: ApproveResult["errors"] = []
   const approvedIds: number[] = []
   await db.transaction(async (tx) => {
@@ -55,4 +55,34 @@ export async function approvePrices(raw: unknown): Promise<ApproveResult> {
   if (approvedIds.length) updateTag("catalog")
   refresh()
   return { approved: approvedIds.length, errors }
+}
+
+const optional = (max: number) => z.string().trim().max(max).optional()
+
+const legal = z
+  .object({
+    ids: z.array(z.number().int().positive()).min(1).max(500),
+    maker: optional(160),
+    makerAddress: optional(400),
+    prePackaged: z.boolean().optional(),
+  })
+  .refine((d) => d.maker || d.makerAddress || d.prePackaged !== undefined, "Fill at least one field")
+
+export async function setLegalFields(raw: unknown) {
+  await requireRole("owner", "staff")
+  const d = legal.parse(raw)
+  const updated = await db
+    .update(products)
+    .set({
+      ...(d.maker ? { maker: d.maker } : {}),
+      ...(d.makerAddress ? { makerAddress: d.makerAddress } : {}),
+      ...(d.prePackaged !== undefined ? { prePackaged: d.prePackaged } : {}),
+      updatedAt: new Date(),
+    })
+    .where(inArray(products.id, d.ids))
+    .returning({ id: products.id })
+  for (const { id } of updated) updateTag(`product:${String(id)}`)
+  updateTag("catalog")
+  refresh()
+  return updated.length
 }

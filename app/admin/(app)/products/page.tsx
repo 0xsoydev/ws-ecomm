@@ -1,23 +1,13 @@
+import { PackageSearch } from "lucide-react"
 import type { Metadata } from "next"
-import { Suspense } from "react"
-import { requireRole } from "@/lib/auth"
-import { loadProductRows } from "./load"
-import { ProductList } from "./product-list"
 
 export const metadata: Metadata = { title: "Products" }
 
 export default function ProductsPage() {
   return (
-    <div className="mx-auto flex max-w-[1100px] flex-col gap-5">
-      <h1 className="text-2xl">Products</h1>
-      <Suspense fallback={<div aria-hidden className="h-96 animate-pulse rounded-container bg-surface" />}>
-        <List />
-      </Suspense>
+    <div className="sticky top-6 hidden h-[calc(100dvh-3rem)] flex-col items-center justify-center gap-3 rounded-container border border-dashed border-line-strong text-center text-muted xl:flex">
+      <PackageSearch aria-hidden size={32} strokeWidth={1.25} />
+      <p className="max-w-[36ch]">Pick a product to edit its price, photos, vehicles, stock and details in one place.</p>
     </div>
   )
-}
-
-async function List() {
-  await requireRole("owner", "staff")
-  return <ProductList rows={await loadProductRows()} />
 }

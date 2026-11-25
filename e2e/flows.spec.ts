@@ -71,7 +71,7 @@ test("admin screens have no accessibility problems", async ({ page }, info) => {
   await page.getByLabel("Password").fill(OWNER.password)
   await page.getByRole("button", { name: "Sign in with password" }).click()
   await expect(page).toHaveURL(/\/admin$/)
-  for (const path of ["/admin", "/admin/orders", "/admin/settings"]) {
+  for (const path of ["/admin", "/admin/orders", "/admin/settings", "/admin/products?view=prices", "/admin/products/2"]) {
     await page.goto(path)
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
     const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()
