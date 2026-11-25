@@ -86,7 +86,7 @@ export default async function Home() {
         <div className="px-4 empty:hidden sm:px-0">
           <YourVehicle options={vehicleOptions(data.models)} />
         </div>
-        <BrandRail brands={brandTiles(data)} />
+        <BrandRail brands={brandTiles(data)} moving />
       </div>
 
       {rails.map((s) => (
