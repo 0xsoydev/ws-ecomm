@@ -1,5 +1,6 @@
 import { ChevronRight, MapPin, Store } from "lucide-react"
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
 import { vehicleOptions } from "@/components/Listing"
 import BrandRail from "@/components/BrandRail"
@@ -19,9 +20,9 @@ export const metadata: Metadata = { alternates: { canonical: "/" } }
 
 const FLAGSHIP = "batteries-bms"
 const BENTO = [
-  { title: "Lithium-ion batteries", line: "18650 cells, holders and battery-building parts", system: "batteries-bms", cats: ["battery-packs", "cells-holders", "battery-accessories"], lead: "lithium-ion-cell-2600mah-dmegc-pack-of-200", big: true },
-  { title: "BMS", line: "48V and 60V battery management boards", system: "batteries-bms", cats: ["bms-48v", "bms-60v"], lead: null, big: false },
-  { title: "Converters & controllers", line: "Motor controllers and DC converters", system: "electricals", cats: ["controllers", "converters"], lead: null, big: false },
+  { title: "Lithium-ion batteries", line: "18650 cells, holders and battery-building parts", system: "batteries-bms", cats: ["battery-packs", "cells-holders", "battery-accessories"], lead: "lithium-ion-cell-2600mah-dmegc-pack-of-200", photo: null, big: true },
+  { title: "BMS", line: "48V and 60V battery management boards", system: "batteries-bms", cats: ["bms-48v", "bms-60v"], lead: null, photo: "fill:site/bento-bms", big: false },
+  { title: "Converters & controllers", line: "Motor controllers and DC converters", system: "electricals", cats: ["controllers", "converters"], lead: null, photo: null, big: false },
 ] as const
 const PER_RAIL = 6
 
@@ -95,8 +96,8 @@ export default async function Home() {
                   {partsCount(b.count)}
                   <ChevronRight aria-hidden className="size-4" strokeWidth={2} />
                 </span>
-                <span aria-hidden className={`absolute right-0 bottom-0 transition-transform duration-300 ease-out [@media(hover:hover)]:group-hover:scale-[1.04] [&_img]:mix-blend-multiply ${b.big ? "h-[72%] w-[64%] sm:h-[78%]" : "h-[62%] w-[78%] sm:h-[58%] sm:w-[46%] lg:h-[74%] lg:w-[52%]"}`}>
-                  {b.image ? <ProductImage image={b.image} alt="" sizes={b.big ? "(min-width: 640px) 440px, 68vw" : "(min-width: 640px) 220px, 30vw"} preload={b.big} /> : <Placeholder systemSlug={b.system} code={null} size="tile" />}
+                <span aria-hidden className={`absolute transition-transform duration-300 ease-out [@media(hover:hover)]:group-hover:scale-[1.04] ${b.photo ? "-right-[6%] -bottom-[10%] h-[80%] w-[86%] sm:h-[82%] sm:w-[58%] lg:h-[96%] lg:w-[58%]" : `right-0 bottom-0 [&_img]:mix-blend-multiply ${b.big ? "h-[72%] w-[64%] sm:h-[78%]" : "h-[62%] w-[78%] sm:h-[58%] sm:w-[46%] lg:h-[74%] lg:w-[52%]"}`}`}>
+                  {b.photo ? <Image src={b.photo} alt="" fill sizes="(min-width: 1024px) 260px, (min-width: 640px) 180px, 40vw" className="object-contain" /> : b.image ? <ProductImage image={b.image} alt="" sizes={b.big ? "(min-width: 640px) 440px, 68vw" : "(min-width: 640px) 220px, 30vw"} preload={b.big} /> : <Placeholder systemSlug={b.system} code={null} size="tile" />}
                 </span>
               </Link>
             </li>
