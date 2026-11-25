@@ -11,6 +11,8 @@ import { CLOSE, EXACT, interpreted, searchScored, shortcuts } from "@/lib/search
 import { catalog } from "@/lib/storefront"
 import { button } from "@/lib/ui"
 import { photoHelp } from "@/lib/whatsapp"
+import BrandRail from "@/components/BrandRail"
+import { brandTiles } from "@/lib/brands"
 
 export async function generateMetadata({ searchParams }: PageProps<"/search">): Promise<Metadata> {
   const q = (await searchParams).q
@@ -63,6 +65,9 @@ async function Results({ searchParams }: { searchParams: PageProps<"/search">["s
           <WhatsAppLink text={photoHelp(null)} variant="secondary">
             Send a photo on WhatsApp
           </WhatsAppLink>
+          <div className="-mx-4 w-[calc(100%+2rem)] sm:mx-0 sm:w-full">
+            <BrandRail brands={brandTiles(data)} id="search-brands" />
+          </div>
           <ul className="mt-2 flex flex-wrap gap-2">
             {data.systems.map((s) => (
               <li key={s.slug}>

@@ -4,7 +4,6 @@ import { isPurchasable, purchasableIssues } from "./catalog"
 const ctx = { collectsTax: false, eprRegistration: null, packStandard: null }
 const ready = {
   status: "active" as const,
-  countryOfOrigin: "China",
   maker: "Sai Traders",
   makerAddress: "Lamington Road, Mumbai 400007",
   prePackaged: false,
@@ -18,7 +17,7 @@ const ready = {
 }
 
 describe("purchasableIssues", () => {
-  test("a loose imported part with origin, importer and an approved price is buyable", () => {
+  test("a loose part with an approved price is buyable", () => {
     expect(purchasableIssues(ready, ctx)).toEqual([])
   })
 
@@ -26,14 +25,9 @@ describe("purchasableIssues", () => {
     expect(purchasableIssues({ ...ready, prePackaged: null }, ctx)).toEqual(["prePackaged"])
   })
 
-  test("a loose imported BMS board still needs origin and importer", () => {
-    expect(purchasableIssues({ ...ready, maker: null }, ctx)).toEqual(["importer"])
-    expect(purchasableIssues({ ...ready, countryOfOrigin: null }, ctx)).toEqual(["origin"])
-  })
-
-  test("Indian goods do not need an importer unless pre-packaged", () => {
-    expect(purchasableIssues({ ...ready, countryOfOrigin: "India", maker: null, makerAddress: null }, ctx)).toEqual([])
-    expect(purchasableIssues({ ...ready, countryOfOrigin: "India", maker: null, prePackaged: true }, ctx)).toEqual(["netQuantity", "mrp", "maker"])
+  test("country of origin and importer are not asked for; a maker is needed only when pre-packaged", () => {
+    expect(purchasableIssues({ ...ready, maker: null, makerAddress: null }, ctx)).toEqual([])
+    expect(purchasableIssues({ ...ready, maker: null, prePackaged: true }, ctx)).toEqual(["netQuantity", "mrp", "maker"])
   })
 
   test("cells need a verified BIS number, packs need EPR, HSN only when tax is collected", () => {

@@ -4,7 +4,7 @@ import { Check, ChevronLeft, CircleAlert, Plus, Trash2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react"
-import { ISSUES, isIndia, purchasableIssues, type PurchasableContext } from "@/lib/catalog"
+import { ISSUES, purchasableIssues, type PurchasableContext } from "@/lib/catalog"
 import { formatPaise, parseRupees } from "@/lib/format"
 import type { batteryKind, bodyStyle, fulfilment, products, productStatus } from "@/lib/schema"
 import { button, field } from "@/lib/ui"
@@ -58,7 +58,6 @@ export function ProductEditor({ product, categories, images, ctx, isOwner }: { p
       description: product.description,
       copyReviewed: product.copyReviewed,
       prePackaged: product.prePackaged,
-      countryOfOrigin: product.countryOfOrigin ?? "",
       maker: product.maker ?? "",
       makerAddress: product.makerAddress ?? "",
       netQuantity: product.netQuantity ?? "",
@@ -105,7 +104,6 @@ export function ProductEditor({ product, categories, images, ctx, isOwner }: { p
   const issues = purchasableIssues(
     {
       status: form.status,
-      countryOfOrigin: form.countryOfOrigin || null,
       maker: form.maker || null,
       makerAddress: form.makerAddress || null,
       prePackaged: form.prePackaged,
@@ -119,8 +117,6 @@ export function ProductEditor({ product, categories, images, ctx, isOwner }: { p
     },
     ctx,
   )
-  const imported = form.countryOfOrigin.trim() !== "" && !isIndia(form.countryOfOrigin)
-  const makerLabel = imported ? "Importer" : "Maker"
 
   function save() {
     const wholesalePaise = parseRupees(form.wholesale)
@@ -146,7 +142,6 @@ export function ProductEditor({ product, categories, images, ctx, isOwner }: { p
         description: form.description,
         copyReviewed: form.copyReviewed,
         prePackaged: form.prePackaged,
-        countryOfOrigin: form.countryOfOrigin,
         maker: form.maker,
         makerAddress: form.makerAddress,
         netQuantity: form.netQuantity,
@@ -266,13 +261,10 @@ export function ProductEditor({ product, categories, images, ctx, isOwner }: { p
                 </div>
                 <span className="text-sm text-muted">Your CA decides this. Until then the product stays display-only.</span>
               </fieldset>
-              <Field label="Country of origin" hint="Full name, for example China">
-                <input className={field} value={form.countryOfOrigin} onChange={(e) => { set("countryOfOrigin", e.target.value) }} />
-              </Field>
-              <Field label={`${makerLabel} name`}>
+              <Field label="Maker name">
                 <input className={field} value={form.maker} onChange={(e) => { set("maker", e.target.value) }} />
               </Field>
-              <Field label={`${makerLabel} address`} wide>
+              <Field label="Maker address" wide>
                 <input className={field} value={form.makerAddress} onChange={(e) => { set("makerAddress", e.target.value) }} />
               </Field>
               {form.prePackaged === true && (

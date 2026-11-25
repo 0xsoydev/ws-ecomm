@@ -216,6 +216,7 @@ export const productVehicles = pgTable("product_vehicle", {
   productId: integer().notNull().references(() => products.id, { onDelete: "cascade" }),
   modelId: integer().notNull().references(() => vehicleModels.id),
   verified: boolean().notNull().default(false),
+  source: text().notNull().default(""),
 }, (t) => [primaryKey({ columns: [t.productId, t.modelId] }), index("product_vehicle_model").on(t.modelId)])
 
 export const slugRedirects = pgTable("slug_redirect", {

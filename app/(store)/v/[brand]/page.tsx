@@ -9,6 +9,8 @@ import { partsCount } from "@/lib/format"
 import { breadcrumbs, itemList, jsonLd } from "@/lib/jsonld"
 import { catalog, vehicleTiles } from "@/lib/storefront"
 import { chip } from "@/lib/ui"
+import WhatsAppLink from "@/components/WhatsAppLink"
+import { LOGOS } from "@/lib/brands"
 
 export const ensureStatic = "navigation"
 
@@ -33,6 +35,7 @@ export async function generateMetadata({ params }: PageProps<"/v/[brand]">): Pro
     title: `${found.name} EV spare parts in Mumbai`,
     description: `${partsCount(found.tiles.length)} for ${found.models.map((m) => vehicleOptions([m])[0]?.label).join(", ")} at Gulab Auto Garage, Malad West, Mumbai.`,
     alternates: { canonical: found.models.length === 1 && found.models[0] ? `/v/${brand}/${found.models[0].slug}` : `/v/${brand}` },
+    robots: found.tiles.length ? undefined : { index: false, follow: true },
   }
 }
 
@@ -55,6 +58,13 @@ async function Content({ params }: { params: PageProps<"/v/[brand]">["params"] }
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd([breadcrumbs([{ name: "Vehicles", path: "/v" }, { name, path: `/v/${brand}` }]), itemList(`${name} parts`, tiles)])} />
       <PageHead back={{ href: "/v", label: "Vehicles" }} title={`${name} parts`}>
+        {LOGOS.has(brand) ? (
+          <span
+            aria-hidden
+            className="block h-9 w-40 bg-muted [mask-position:left_center] [mask-repeat:no-repeat] [mask-size:contain]"
+            style={{ maskImage: `url(/brands/${brand}.svg)`, WebkitMaskImage: `url(/brands/${brand}.svg)` }}
+          />
+        ) : null}
         <ul aria-label={`${name} models`} className="flex flex-wrap gap-2">
           {vehicleOptions(models).map((v) => (
             <li key={v.key}>
@@ -65,7 +75,16 @@ async function Content({ params }: { params: PageProps<"/v/[brand]">["params"] }
           ))}
         </ul>
       </PageHead>
-      {tiles.length ? <Listing groups={[{ slug: "brand", name: `${name} parts`, tiles }]} models={models} chips={[]} /> : <p className="py-8 text-muted">No parts listed for {name} yet. Ask us on WhatsApp.</p>}
+      {tiles.length ? (
+        <Listing groups={[{ slug: "brand", name: `${name} parts`, tiles }]} models={models} chips={[]} />
+      ) : (
+        <div className="mt-2 flex max-w-[60ch] flex-col items-start gap-4 rounded-container border border-line bg-surface p-5">
+          <p>We haven&rsquo;t listed parts for {name} scooters yet, but we service and source them at the shop. Send a photo of the part you need and we&rsquo;ll check.</p>
+          <WhatsAppLink text={`Hi, I need a part for my ${name} scooter. Photo attached.`} variant="ink">
+            Send a photo on WhatsApp
+          </WhatsAppLink>
+        </div>
+      )}
     </>
   )
 }

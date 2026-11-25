@@ -68,7 +68,6 @@ async function Readiness() {
     db
       .select({
         status: products.status,
-        countryOfOrigin: products.countryOfOrigin,
         maker: products.maker,
         makerAddress: products.makerAddress,
         prePackaged: products.prePackaged,

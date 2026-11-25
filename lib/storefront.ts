@@ -218,7 +218,6 @@ export async function productPage(slug: string) {
     specs: row.specsReviewed ? Object.entries(row.specs) : [],
     description: row.copyReviewed ? row.description : "",
     legal: {
-      countryOfOrigin: row.countryOfOrigin,
       maker: row.maker,
       makerAddress: row.makerAddress,
       prePackaged: row.prePackaged,

@@ -17,6 +17,8 @@ import AddButton from "./AddButton"
 import Placeholder from "./Placeholder"
 import ProductCard from "./ProductCard"
 import ProductImage from "./ProductImage"
+import BrandRail from "./BrandRail"
+import { brandTiles } from "@/lib/brands"
 
 const rupees = { style: "currency", currency: "INR", maximumFractionDigits: 2, minimumFractionDigits: 0 } as const
 
@@ -99,6 +101,9 @@ export default function CartView({ scope, minOrderPaise, rates }: { scope: strin
               </li>
             ))}
           </ul>
+        </div>
+        <div className="-mx-4 sm:mx-0">
+          <BrandRail brands={brandTiles(data)} id="cart-brands" />
         </div>
         <section aria-labelledby="popular" className="flex flex-col gap-3">
           <h2 id="popular" className="text-xl">

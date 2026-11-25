@@ -1,0 +1,1 @@
+ALTER TABLE "product_vehicle" ADD COLUMN "source" text DEFAULT '' NOT NULL;

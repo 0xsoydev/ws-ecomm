@@ -4,6 +4,7 @@ import { OWNER } from "./constants"
 
 test("Add to cart on a product page keeps keyboard focus on the next step", async ({ page }) => {
   await page.goto("/p/lever-ola-drum")
+  await page.waitForLoadState("networkidle")
   const add = page.locator("#buy-main").getByRole("button", { name: "Add to cart" })
   await add.focus()
   await page.keyboard.press("Enter")

@@ -14,6 +14,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...data.categories.filter((c) => c.count > 0).map((c) => ({ url: `${site}/c/${system.get(c.systemId) ?? ""}/${c.slug}` })),
     ...data.tiles.filter((t) => t.image).map((t) => ({ url: `${site}/p/${t.slug}` })),
     ...data.models.filter((m) => vehicleTiles(data, [m.id]).length >= VEHICLE_INDEX_MIN).map((m) => ({ url: `${site}/v/${m.brandSlug}/${m.slug}` })),
-    ...[...new Set(data.models.map((m) => m.brandSlug))].map((b) => ({ url: `${site}/v/${b}` })),
+    ...[...new Set(data.models.map((m) => m.brandSlug))].filter((b) => vehicleTiles(data, data.models.filter((m) => m.brandSlug === b).map((m) => m.id)).length > 0).map((b) => ({ url: `${site}/v/${b}` })),
   ]
 }

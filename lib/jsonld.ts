@@ -60,7 +60,6 @@ type ProductInput = {
   pickupOnly: boolean
   fits: readonly string[]
   specs: readonly [string, string][]
-  countryOfOrigin: string | null
 }
 
 export function productNode(p: ProductInput) {
@@ -76,7 +75,6 @@ export function productNode(p: ProductInput) {
     mpn: p.code ?? undefined,
     brand: p.maker ? { "@type": "Brand", name: p.maker } : undefined,
     category: p.category,
-    countryOfOrigin: p.countryOfOrigin ?? undefined,
     additionalProperty: p.specs.length ? p.specs.map(([name, value]) => ({ "@type": "PropertyValue", name, value })) : undefined,
     isAccessoryOrSparePartFor: p.fits.length ? p.fits.map((name) => ({ "@type": "Product", name })) : undefined,
     offers: {

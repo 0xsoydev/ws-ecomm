@@ -6,6 +6,8 @@ import PageHead from "@/components/PageHead"
 import { ListingSkeleton } from "@/components/Skeletons"
 import { breadcrumbs, itemList, jsonLd } from "@/lib/jsonld"
 import { catalog } from "@/lib/storefront"
+import BrandRail from "@/components/BrandRail"
+import { brandTiles } from "@/lib/brands"
 
 export const ensureStatic = "navigation"
 
@@ -48,6 +50,7 @@ async function Content({ params }: { params: PageProps<"/c/[system]">["params"] 
     .filter((c) => c.systemId === system.id)
     .map((c) => ({ slug: c.slug, name: c.name, href: `/c/${system.slug}/${c.slug}`, tiles: data.tiles.filter((t) => t.categoryId === c.id) }))
     .filter((g) => g.tiles.length > 0)
+  const brands = brandTiles({ models: data.models, tiles: groups.flatMap((g) => g.tiles) })
   const buyable = groups.some((g) => g.tiles.some((t) => t.purchasable))
   return (
     <>
@@ -56,6 +59,11 @@ async function Content({ params }: { params: PageProps<"/c/[system]">["params"] 
         {system.blurb ? <p className="max-w-[60ch] text-muted">{system.blurb}</p> : null}
         {buyable ? null : <p className="max-w-[60ch] text-sm text-muted">Buy these at the shop in Malad West, or ask on WhatsApp for stock and a live photo.</p>}
       </PageHead>
+      {brands.length > 1 ? (
+        <div className="-mx-4 mb-2 sm:mx-0">
+          <BrandRail brands={brands} id="system-brands" />
+        </div>
+      ) : null}
       <Listing groups={groups} models={data.models} chips="spy" />
     </>
   )

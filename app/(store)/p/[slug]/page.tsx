@@ -11,7 +11,6 @@ import { ProductSkeleton } from "@/components/Skeletons"
 import { badgeTone, stockBadge } from "@/components/stock-badge"
 import WhatsAppIcon from "@/components/WhatsAppIcon"
 import { RETURNS } from "@/lib/business"
-import { isIndia } from "@/lib/catalog"
 import { publicEnv } from "@/lib/env.public"
 import { formatPaise, unitWord } from "@/lib/format"
 import { feeSummary } from "@/lib/delivery"
@@ -102,9 +101,10 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
   }
   if ("redirect" in page) permanentRedirect(`/p/${page.redirect}`)
   const { tile, legal, info } = page
+  const firstModel = tile.vehicles[0]?.modelId
+  const sameVehicle = firstModel === undefined ? [] : (await catalog()).tiles.filter((t) => t.id !== tile.id && t.vehicles.some((v) => v.modelId === firstModel)).slice(0, 8)
   const url = `${publicEnv.NEXT_PUBLIC_SITE_URL}/p/${tile.slug}`
   const badge = stockBadge(tile)
-  const imported = legal.countryOfOrigin !== null && !isIndia(legal.countryOfOrigin)
   const section = "flex flex-col gap-3 border-t border-line pt-6"
   const ld: object[] = [
     breadcrumbs([
@@ -131,7 +131,6 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
         pickupOnly: tile.pickupOnly,
         fits: page.fits.filter((f) => f.verified).map((f) => f.label),
         specs: page.specs,
-        countryOfOrigin: legal.countryOfOrigin,
       }),
     )
   }
@@ -310,10 +309,9 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
 
           <section aria-label="Legal details" className="flex flex-col gap-1 border-t border-line pt-6 text-xs text-muted">
             <p>Sold by {info.legalName} (WS Green), Malad West, Mumbai.</p>
-            {legal.countryOfOrigin ? <p>Country of origin: {legal.countryOfOrigin}.</p> : null}
             {legal.maker ? (
               <p>
-                {imported ? "Importer" : "Maker"}: {`${legal.maker}${legal.makerAddress ? `, ${legal.makerAddress}` : ""}`.replace(/\.*$/, ".")}
+                Maker: {`${legal.maker}${legal.makerAddress ? `, ${legal.makerAddress}` : ""}`.replace(/\.*$/, ".")}
               </p>
             ) : null}
             {legal.prePackaged && legal.mrpPaise !== null ? <p>MRP {formatPaise(legal.mrpPaise)} incl. of all taxes.</p> : null}
@@ -329,6 +327,26 @@ async function Content({ params }: { params: PageProps<"/p/[slug]">["params"] })
           </section>
         </div>
       </div>
+
+      {sameVehicle.length && page.fits[0] ? (
+        <section aria-labelledby="same-vehicle" className="mt-14">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 id="same-vehicle" className="text-xl">
+              More parts for {page.fits[0].label}
+            </h2>
+            <Link href={`/v/${page.fits[0].brandSlug}/${page.fits[0].slug}`} className="flex min-h-11 shrink-0 items-center text-sm font-medium no-underline [@media(hover:hover)]:hover:underline">
+              See all
+            </Link>
+          </div>
+          <ul className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+            {sameVehicle.map((t) => (
+              <li key={t.id} className="flex">
+                <ProductCard tile={t} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {page.related.length ? (
         <section aria-labelledby="related" className="mt-14">

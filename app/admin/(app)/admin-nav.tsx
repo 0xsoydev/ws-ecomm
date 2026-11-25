@@ -1,7 +1,7 @@
 "use client"
 
 import Logo from "@/components/Logo"
-import { Camera, House, IndianRupee, ListChecks, Package, ReceiptText, Settings } from "lucide-react"
+import { Bike, Camera, House, IndianRupee, ListChecks, Package, ReceiptText, Settings } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -14,7 +14,10 @@ const items = [
   { href: "/admin/products/fix", label: "Fix", icon: ListChecks },
 ] as const
 
-const desktopOnly = [{ href: "/admin/settings", label: "Settings", icon: Settings }] as const
+const desktopOnly = [
+  { href: "/admin/products/vehicles", label: "Vehicles", icon: Bike },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
+] as const
 
 function isActive(pathname: string | null, href: string) {
   if (pathname === null) return false

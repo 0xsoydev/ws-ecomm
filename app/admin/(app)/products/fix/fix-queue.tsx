@@ -8,7 +8,7 @@ import type { ProductRow } from "../load"
 import { Thumb } from "../product-list"
 import { setLegalFields } from "./actions"
 
-const BULK: Partial<Record<Issue, "legal" | "packaging">> = { origin: "legal", importer: "legal", maker: "legal", prePackaged: "packaging" }
+const BULK: Partial<Record<Issue, "legal" | "packaging">> = { maker: "legal", prePackaged: "packaging" }
 
 export function FixQueue({ rows, initialIssue }: { rows: ProductRow[]; initialIssue: Issue | null }) {
   const counts = new Map<Issue, number>()
@@ -16,7 +16,7 @@ export function FixQueue({ rows, initialIssue }: { rows: ProductRow[]; initialIs
   const available = (Object.keys(ISSUES) as Issue[]).filter((i) => counts.has(i)).sort((a, b) => Number(Boolean(BULK[b])) - Number(Boolean(BULK[a])) || Number(a === "price") - Number(b === "price"))
   const [issue, setIssue] = useState<Issue | null>(initialIssue && counts.has(initialIssue) ? initialIssue : (available[0] ?? null))
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [form, setForm] = useState({ countryOfOrigin: "", maker: "", makerAddress: "", prePackaged: "" as "" | "loose" | "packed" })
+  const [form, setForm] = useState({ maker: "", makerAddress: "", prePackaged: "" as "" | "loose" | "packed" })
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -37,7 +37,7 @@ export function FixQueue({ rows, initialIssue }: { rows: ProductRow[]; initialIs
     setMessage(null)
     const payload = {
       ids: [...selected],
-      ...(mode === "legal" ? { countryOfOrigin: form.countryOfOrigin, maker: form.maker, makerAddress: form.makerAddress } : {}),
+      ...(mode === "legal" ? { maker: form.maker, makerAddress: form.makerAddress } : {}),
       ...(mode === "packaging" && form.prePackaged ? { prePackaged: form.prePackaged === "packed" } : {}),
     }
     startTransition(async () => {
@@ -51,7 +51,7 @@ export function FixQueue({ rows, initialIssue }: { rows: ProductRow[]; initialIs
     })
   }
 
-  const ready = selected.size > 0 && (mode === "legal" ? Boolean(form.countryOfOrigin.trim() || form.maker.trim() || form.makerAddress.trim()) : Boolean(form.prePackaged))
+  const ready = selected.size > 0 && (mode === "legal" ? Boolean(form.maker.trim() || form.makerAddress.trim()) : Boolean(form.prePackaged))
 
   return (
     <div className="flex flex-col gap-4 pb-48 md:pb-40">
@@ -105,7 +105,6 @@ export function FixQueue({ rows, initialIssue }: { rows: ProductRow[]; initialIs
               </Link>
               <p className="truncate text-sm text-muted">
                 {r.category}
-                {r.countryOfOrigin ? `, ${r.countryOfOrigin}` : ""}
                 {r.maker ? `, ${r.maker}` : ""}
               </p>
             </div>
@@ -117,10 +116,9 @@ export function FixQueue({ rows, initialIssue }: { rows: ProductRow[]; initialIs
         <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-line bg-surface px-4 py-3 md:bottom-0 md:left-56 md:px-8">
           <div className="mx-auto flex max-w-[1100px] flex-col gap-3">
             {mode === "legal" ? (
-              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_2fr]">
-                <input aria-label="Country of origin" placeholder="Country of origin, e.g. China" className={field} value={form.countryOfOrigin} onChange={(e) => { setForm((f) => ({ ...f, countryOfOrigin: e.target.value })) }} />
-                <input aria-label="Importer or maker name" placeholder="Importer or maker name" className={field} value={form.maker} onChange={(e) => { setForm((f) => ({ ...f, maker: e.target.value })) }} />
-                <input aria-label="Importer or maker address" placeholder="Importer or maker address" className={field} value={form.makerAddress} onChange={(e) => { setForm((f) => ({ ...f, makerAddress: e.target.value })) }} />
+              <div className="grid gap-2 sm:grid-cols-[1fr_2fr]">
+                <input aria-label="Maker name" placeholder="Maker name" className={field} value={form.maker} onChange={(e) => { setForm((f) => ({ ...f, maker: e.target.value })) }} />
+                <input aria-label="Maker address" placeholder="Maker address" className={field} value={form.makerAddress} onChange={(e) => { setForm((f) => ({ ...f, makerAddress: e.target.value })) }} />
               </div>
             ) : (
               <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Packaging">

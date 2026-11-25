@@ -2,12 +2,14 @@ import { ChevronRight, MapPin, Store } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { vehicleOptions } from "@/components/Listing"
+import BrandRail from "@/components/BrandRail"
 import OpenStatus from "@/components/OpenStatus"
 import Placeholder from "@/components/Placeholder"
 import ProductCard from "@/components/ProductCard"
 import ProductImage from "@/components/ProductImage"
 import WhatsAppLink from "@/components/WhatsAppLink"
 import YourVehicle from "@/components/YourVehicle"
+import { brandTiles } from "@/lib/brands"
 import { jsonLd, localBusiness, website } from "@/lib/jsonld"
 import { catalog, storeInfo, type Tile } from "@/lib/storefront"
 import { button } from "@/lib/ui"
@@ -30,8 +32,6 @@ export default async function Home() {
   const rails = [...data.systems]
     .filter((s) => s.count > 0)
     .sort((a, b) => Number(b.slug === FLAGSHIP) - Number(a.slug === FLAGSHIP) || b.count - a.count)
-  const brandParts = (slug: string) => data.tiles.filter((t) => t.vehicles.some((v) => data.models.some((m) => m.id === v.modelId && m.brandSlug === slug))).length
-  const brands = [...new Map(data.models.map((m) => [m.brandSlug, m.brandName])).entries()].sort((a, b) => brandParts(b[0]) - brandParts(a[0]) || a[1].localeCompare(b[1]))
 
   return (
     <>
@@ -82,32 +82,12 @@ export default async function Home() {
         </ul>
       </section>
 
-      <section aria-labelledby="vehicles" className="mx-auto mt-6 max-w-[1200px] sm:px-6">
-        <div className="flex min-h-11 items-center justify-between gap-3 px-4 sm:px-0">
-          <h2 id="vehicles" className="text-sm font-semibold">
-            Shop by scooter
-          </h2>
+      <div className="mx-auto mt-8 flex max-w-[1200px] flex-col gap-2 sm:px-6">
+        <div className="px-4 empty:hidden sm:px-0">
           <YourVehicle options={vehicleOptions(data.models)} />
         </div>
-        <ul className="mt-2 flex snap-x snap-proximity scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-0">
-          {brands.map(([slug, name]) => (
-            <li key={slug} className="snap-start">
-              <Link
-                href={`/v/${slug}`}
-                className="inline-flex h-11 items-center rounded-full border border-line-strong bg-surface px-4 font-medium whitespace-nowrap no-underline transition-colors duration-150 ease-out active:bg-bg [@media(hover:hover)]:hover:bg-bg"
-              >
-                {name}
-              </Link>
-            </li>
-          ))}
-          <li className="snap-start">
-            <Link href="/v" className="inline-flex h-11 items-center gap-0.5 px-2 text-sm font-medium whitespace-nowrap no-underline [@media(hover:hover)]:hover:underline">
-              All vehicles
-              <ChevronRight aria-hidden className="size-4" strokeWidth={2} />
-            </Link>
-          </li>
-        </ul>
-      </section>
+        <BrandRail brands={brandTiles(data)} />
+      </div>
 
       {rails.map((s) => (
         <section key={s.slug} aria-labelledby={`rail-${s.slug}`} className="mx-auto mt-10 max-w-[1200px] sm:px-6">

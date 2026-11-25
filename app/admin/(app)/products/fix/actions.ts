@@ -12,12 +12,11 @@ const optional = (max: number) => z.string().trim().max(max).optional()
 const input = z
   .object({
     ids: z.array(z.number().int().positive()).min(1).max(500),
-    countryOfOrigin: optional(60),
     maker: optional(160),
     makerAddress: optional(400),
     prePackaged: z.boolean().optional(),
   })
-  .refine((d) => d.countryOfOrigin || d.maker || d.makerAddress || d.prePackaged !== undefined, "Fill at least one field")
+  .refine((d) => d.maker || d.makerAddress || d.prePackaged !== undefined, "Fill at least one field")
 
 export async function setLegalFields(raw: unknown) {
   await requireRole("owner", "staff")
@@ -25,7 +24,6 @@ export async function setLegalFields(raw: unknown) {
   const updated = await db
     .update(products)
     .set({
-      ...(d.countryOfOrigin ? { countryOfOrigin: d.countryOfOrigin } : {}),
       ...(d.maker ? { maker: d.maker } : {}),
       ...(d.makerAddress ? { makerAddress: d.makerAddress } : {}),
       ...(d.prePackaged !== undefined ? { prePackaged: d.prePackaged } : {}),
