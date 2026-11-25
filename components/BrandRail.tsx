@@ -14,11 +14,11 @@ function Logo({ brand, hidden }: { brand: BrandTile; hidden?: boolean }) {
         href={`/v/${brand.slug}`}
         tabIndex={hidden ? -1 : undefined}
         aria-label={`${brand.name}, ${brand.count ? partsCount(brand.count) : "ask us for parts"}`}
-        className="group flex h-14 w-28 items-center justify-center rounded-control no-underline transition-transform duration-150 ease-out active:scale-[0.96]"
+        className="group flex h-16 w-36 items-center justify-center rounded-control no-underline transition-transform duration-150 ease-out active:scale-[0.96]"
       >
         <span
           aria-hidden
-          className="block h-8 w-full bg-muted transition-colors duration-150 ease-out [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain] group-hover:bg-ink group-focus-visible:bg-ink"
+          className="block h-10 w-full bg-muted transition-colors duration-150 ease-out [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain] group-hover:bg-ink group-focus-visible:bg-ink"
           style={{ maskImage: `url(/brands/${brand.slug}.svg)`, WebkitMaskImage: `url(/brands/${brand.slug}.svg)` }}
         />
       </Link>
@@ -61,18 +61,18 @@ export default function BrandRail({ brands, title = "Shop by scooter", id = "bra
         </div>
       </div>
       {moving ? (
-        <div className="overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)] [scrollbar-width:none] motion-reduce:snap-x motion-reduce:snap-proximity motion-reduce:overflow-x-auto motion-reduce:px-4 motion-reduce:[mask-image:linear-gradient(to_right,#000_88%,transparent)] sm:motion-reduce:px-0 sm:motion-reduce:[mask-image:none]">
+        <div className="overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)] [scrollbar-width:none] motion-reduce:snap-x motion-reduce:snap-proximity motion-reduce:overflow-x-auto motion-reduce:scroll-px-4 motion-reduce:px-4 sm:motion-reduce:scroll-px-0 motion-reduce:[mask-image:linear-gradient(to_right,#000_88%,transparent)] sm:motion-reduce:px-0 sm:motion-reduce:[mask-image:none]">
           <div
             data-paused={paused || undefined}
             style={{ "--marquee-duration": `${String(brands.length * 3.5)}s` } as CSSProperties}
             className="flex w-max motion-safe:animate-marquee has-[:focus-visible]:animate-none data-paused:[animation-play-state:paused] [@media(hover:hover)]:hover:[animation-play-state:paused]"
           >
-            <ul className="flex shrink-0 gap-8 pr-8">
+            <ul className="flex shrink-0 gap-12 pr-12">
               {brands.map((b) => (
                 <Logo key={b.slug} brand={b} />
               ))}
             </ul>
-            <ul aria-hidden inert className="flex shrink-0 gap-8 pr-8 motion-reduce:hidden">
+            <ul aria-hidden inert className="flex shrink-0 gap-12 pr-12 motion-reduce:hidden">
               {brands.map((b) => (
                 <Logo key={b.slug} brand={b} hidden />
               ))}
@@ -80,7 +80,7 @@ export default function BrandRail({ brands, title = "Shop by scooter", id = "bra
           </div>
         </div>
       ) : (
-        <ul ref={rail} className="flex snap-x snap-proximity scroll-px-4 gap-4 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,#000_88%,transparent)] [scrollbar-width:none] sm:scroll-px-0 sm:px-0 sm:[mask-image:none]">
+        <ul ref={rail} className="flex snap-x snap-proximity scroll-px-4 gap-8 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,#000_88%,transparent)] [scrollbar-width:none] sm:scroll-px-0 sm:px-0 sm:[mask-image:none]">
           {brands.map((b) => (
             <Logo key={b.slug} brand={b} />
           ))}
