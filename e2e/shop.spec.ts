@@ -104,3 +104,13 @@ test("an order page does not open in another browser", async ({ browser, page },
   await expect(other.getByText(/order details open only in the browser the order was placed from/).filter({ visible: true })).toBeVisible()
   await other.close()
 })
+
+test("a popular-parts tile opens its section filtered to those categories", async ({ page }) => {
+  await page.goto("/")
+  await page.getByRole("navigation", { name: "Popular parts" }).getByRole("link", { name: /^BMS/ }).click()
+  await expect(page).toHaveURL(/\/c\/batteries-bms\?show=bms-48v(,|%2C)bms-60v/)
+  await expect(page.getByRole("button", { name: "Remove filter 48V BMS" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: /Cells/ })).toHaveCount(0)
+  await page.getByRole("button", { name: "Remove filter 48V BMS" }).click()
+  await expect(page.getByRole("heading", { name: /Cells/ })).toBeVisible()
+})

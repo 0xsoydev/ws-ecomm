@@ -23,7 +23,10 @@ const query = {
   stock: parseAsBoolean.withDefault(false),
   spec: parseAsArrayOf(parseAsString).withDefault([]),
   sort: parseAsStringLiteral(SORTS).withDefault("recommended"),
+  show: parseAsArrayOf(parseAsString).withDefault([]),
 }
+
+type Change = Partial<{ vehicle: string | null; body: BodyStyle | null; stock: boolean; spec: string[]; sort: Sort; show: string[] }>
 
 type Props = { sections: ListingSection[]; vehicles: VehicleOption[]; chips: ChipLink[] | "spy"; showVehicleFacet: boolean }
 
@@ -31,8 +34,9 @@ export default function ListingClient(props: Props) {
   const [q, setQ] = useQueryStates(query, { history: "replace", scroll: false })
   const vehicle = props.vehicles.find((v) => v.key === q.vehicle) ?? null
   const filter: ListingFilter = { vehicle: vehicle?.id ?? null, body: q.body, stock: q.stock, specs: q.spec, sort: q.sort }
-  const set = (next: Partial<{ vehicle: string | null; body: BodyStyle | null; stock: boolean; spec: string[]; sort: Sort }>) => void setQ(next)
-  return <ListingView {...props} filter={filter} vehicle={vehicle} set={set} />
+  const set = (next: Change) => void setQ(next)
+  const picked = props.sections.filter((s) => q.show.includes(s.slug))
+  return <ListingView {...props} sections={picked.length ? picked : props.sections} only={picked.length ? picked.map((s) => s.name).join(", ") : null} filter={filter} vehicle={vehicle} set={set} />
 }
 
 export function ListingView({
@@ -42,11 +46,13 @@ export function ListingView({
   showVehicleFacet,
   filter,
   vehicle,
+  only = null,
   set = () => undefined,
 }: Props & {
   filter: ListingFilter
   vehicle: VehicleOption | null
-  set?: (next: Partial<{ vehicle: string | null; body: BodyStyle | null; stock: boolean; spec: string[]; sort: Sort }>) => void
+  only?: string | null
+  set?: (next: Change) => void
 }) {
   const [sheet, setSheet] = useState(false)
   const [opened, setOpened] = useState(false)
@@ -61,12 +67,13 @@ export function ListingView({
     return { ...s, kept }
   })
   const active = [
+    only ? { label: only, clear: () => { set({ show: [] }); } } : null,
     vehicle ? { label: vehicle.label, clear: () => { set({ vehicle: null }); } } : null,
     filter.body ? { label: BODY_LABELS[filter.body], clear: () => { set({ body: null }); } } : null,
     filter.stock ? { label: "In stock", clear: () => { set({ stock: false }); } } : null,
     ...filter.specs.map((s) => ({ label: s.slice(s.indexOf("=") + 1), clear: () => { set({ spec: filter.specs.filter((x) => x !== s) }); } })),
   ].flatMap((a) => (a ? [a] : []))
-  const clearAll = () => { set({ vehicle: null, body: null, stock: false, spec: [], sort: "recommended" }); }
+  const clearAll = () => { set({ vehicle: null, body: null, stock: false, spec: [], sort: "recommended", show: [] }); }
   const toggleSpec = (key: string) => { set({ spec: filter.specs.includes(key) ? filter.specs.filter((x) => x !== key) : [...filter.specs, key] }); }
   const specGroups = FACET_KEYS.flatMap((k) => {
     const values = [...(counts.specs.get(k) ?? new Map<string, number>()).entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))
