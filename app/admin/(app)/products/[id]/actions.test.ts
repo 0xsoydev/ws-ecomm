@@ -47,6 +47,7 @@ beforeAll(async () => {
       stockNote: "",
       expectedUpdatedAt: p.updatedAt.toISOString(),
       photos: photos.map(({ id: photoId, ownPhoto, watermarked, onWhite, classified }) => ({ id: photoId, ownPhoto, watermarked, onWhite, classified })),
+      removedPhotos: [],
       fits: fits.map(({ modelId, verified }) => ({ modelId, verified })),
     }
   }
@@ -106,4 +107,17 @@ test("retail below wholesale and an unexplained stock change are refused", async
   expect(await saveProduct({ ...counted, stock: 5 })).toMatchObject({ ok: false, message: expect.stringContaining("why the stock changed") as string })
   expect(await saveProduct({ ...counted, stock: 5, stockNote: "Recounted" })).toEqual({ ok: true })
   expect(await sql("select delta, reason from stock_movement where product_id = 2")).toEqual([{ delta: 3, reason: "correction" }])
+})
+
+test("a wrong photo is removed on save and recorded in history", async () => {
+  role = "staff"
+  await sql("insert into product_image (product_id, public_id, width, height, position) values (3, 'catalogue-app/wrong-part', 1000, 1000, 1)")
+  const base = await load(3)
+  const wrong = base.photos.find((p, i) => i === 1)
+  if (!wrong) throw new Error("second photo expected")
+  expect(await saveProduct({ ...base, photos: base.photos.filter((p) => p.id !== wrong.id), removedPhotos: [wrong.id] })).toEqual({ ok: true })
+  expect(await sql("select public_id from product_image where product_id = 3")).toHaveLength(1)
+  expect(JSON.stringify(await sql("select diff from audit_log where entity_id = '3' and action = 'content'"))).toContain("catalogue-app/wrong-part")
+  const again = await load(3)
+  expect(await saveProduct({ ...again, photos: [], removedPhotos: [] })).toMatchObject({ ok: false, conflict: true })
 })

@@ -1,6 +1,6 @@
 "use server"
 
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 import { refresh, updateTag } from "next/cache"
 import { z } from "zod"
 import { requireRole, rolesOf } from "@/lib/auth"
@@ -54,6 +54,7 @@ const input = z.object({
     .regex(/^(\d{4,8})?$/, "HSN is 4 to 8 digits")
     .transform((s) => (s === "" ? null : s)),
   photos: z.array(z.object({ id: z.number().int().positive(), ownPhoto: z.boolean(), watermarked: z.boolean(), onWhite: z.boolean(), classified: z.boolean() })).max(40),
+  removedPhotos: z.array(z.number().int().positive()).max(40),
   fits: z.array(z.object({ modelId: z.number().int().positive(), verified: z.boolean() })).max(100),
 })
 
@@ -143,8 +144,11 @@ export async function saveProduct(raw: unknown): Promise<SaveResult> {
       }
 
       const photos = await tx.select().from(productImages).where(eq(productImages.productId, p.id))
-      if (d.photos.length !== photos.length || d.photos.some((x) => !photos.some((y) => y.id === x.id))) throw new UserError("The photos changed after you opened this product. Reload and try again.", true)
+      const kept = new Set(d.photos.map((x) => x.id))
+      const gone = new Set(d.removedPhotos)
+      if (photos.length !== kept.size + gone.size || photos.some((y) => !kept.has(y.id) && !gone.has(y.id))) throw new UserError("The photos changed after you opened this product. Reload and try again.", true)
       const photoChanges: string[] = []
+      if (gone.size) await tx.delete(productImages).where(and(eq(productImages.productId, p.id), inArray(productImages.id, [...gone])))
       for (const [position, x] of d.photos.entries()) {
         const before = photos.find((y) => y.id === x.id)
         const after = { ownPhoto: x.ownPhoto && !x.watermarked, watermarked: x.watermarked, onWhite: x.onWhite, classified: x.classified, position }
@@ -181,6 +185,7 @@ export async function saveProduct(raw: unknown): Promise<SaveResult> {
       for (const k of CONTENT_FIELDS) if (p[k] !== d[k]) content[k] = [p[k], d[k]]
       if (JSON.stringify(p.specs) !== JSON.stringify(d.specs)) content.specs = [p.specs, d.specs]
       if (photoChanges.length) content.photos = [null, photoChanges.join(" ")]
+      if (gone.size) content.photosRemoved = [photos.filter((y) => gone.has(y.id)).map((y) => y.publicId).join(" "), null]
       if (Object.keys(content).length) await tx.insert(auditLog).values({ actorId: user.id, entity: "product", entityId: String(p.id), action: "content", diff: content })
     })
   } catch (error) {

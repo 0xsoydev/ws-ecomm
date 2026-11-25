@@ -41,7 +41,7 @@ const SECTIONS = [
 ] as const
 const ISSUE_SECTION: Record<Issue, string> = { inactive: "overview", price: "price", prePackaged: "legal", netQuantity: "legal", mrp: "legal", maker: "legal", bis: "legal", epr: "legal", hsn: "legal" }
 const PAISE_KEYS = new Set(["wholesalePaise", "retailPaise", "mrpPaise", "costPaise"])
-const KEY_LABEL: Record<string, string> = { wholesalePaise: "wholesale", retailPaise: "retail", mrpPaise: "MRP", costPaise: "cost", moq: "wholesale from", minOrderQty: "minimum order", orderStep: "step", priceApproved: "approved", gstRateBps: "GST", partCode: "part code", categoryId: "category", bodyStyle: "body style", copyReviewed: "description checked", specsReviewed: "specs checked", prePackaged: "packaging", makerAddress: "maker address", netQuantity: "net quantity", batteryKind: "battery", bisRegistration: "BIS", lowStockAt: "low stock warning", weightGrams: "weight" }
+const KEY_LABEL: Record<string, string> = { wholesalePaise: "wholesale", retailPaise: "retail", mrpPaise: "MRP", costPaise: "cost", moq: "wholesale from", minOrderQty: "minimum order", orderStep: "step", priceApproved: "approved", gstRateBps: "GST", partCode: "part code", categoryId: "category", bodyStyle: "body style", copyReviewed: "description checked", specsReviewed: "specs checked", prePackaged: "packaging", makerAddress: "maker address", netQuantity: "net quantity", batteryKind: "battery", bisRegistration: "BIS", lowStockAt: "low stock warning", weightGrams: "weight", photosRemoved: "photos removed" }
 
 function Section({ id, title, note, children }: { id: string; title: string; note?: ReactNode; children: ReactNode }) {
   return (
@@ -278,6 +278,7 @@ export function ProductEditor({ product, categories, images, ctx, fits, models, 
         gstRateBps: form.gstRateBps,
         hsn: form.hsn,
         photos: form.photos.map(({ id, ownPhoto, watermarked, onWhite, classified }) => ({ id, ownPhoto, watermarked, onWhite, classified })),
+        removedPhotos: images.filter((i) => !form.photos.some((p) => p.id === i.id)).map((i) => i.id),
         fits: form.fits.map(({ modelId, verified }) => ({ modelId, verified })),
       })
       if (result.ok) {
@@ -434,7 +435,12 @@ export function ProductEditor({ product, categories, images, ctx, fits, models, 
           </fieldset>
         </Section>
 
-        <Section id="photos" title="Photos" note="Photos marked Ours are shown first on the store. The first photo is the one on cards and in search.">
+        <Section id="photos" title="Photos" note="Photos marked Ours are shown first on the store. The first photo is the one on cards and in search. Remove any photo that shows a different part.">
+          {images.length > form.photos.length ? (
+            <p className="text-sm text-signal">
+              {images.length - form.photos.length} {images.length - form.photos.length === 1 ? "photo" : "photos"} will be removed when you save.
+            </p>
+          ) : null}
           {form.photos.length === 0 ? (
             <p className="text-sm text-muted">No photos yet.</p>
           ) : (
@@ -473,6 +479,9 @@ export function ProductEditor({ product, categories, images, ctx, fits, models, 
                         <Star aria-hidden size={14} /> Make first
                       </button>
                     ) : null}
+                    <button type="button" aria-label={`Remove photo ${String(i + 1)} from this product`} onClick={() => { set("photos", form.photos.filter((x) => x.id !== p.id)) }} className={`${button.small} ml-auto h-9 w-9 px-0`}>
+                      <Trash2 aria-hidden size={14} />
+                    </button>
                   </div>
                 </li>
               ))}
